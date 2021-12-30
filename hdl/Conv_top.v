@@ -135,6 +135,22 @@ output reg [CH_NUM*ACT_PER_ADDR*BW_PER_ACT-1:0] sram_wdata_feat5,
 output reg [CH_NUM*ACT_PER_ADDR*BW_PER_ACT-1:0] sram_wdata_temp
 );
 
+wire valid_n;
+
+always@(posedge clk)begin
+    if(~rst_n)begin
+        valid <= 0;
+    end
+    else begin
+        valid <= valid_n;
+    end
+end
+
+assign valid_n = 1;
+//always@(*)begin
+//    valid_n = 1;
+//end
+
 
 
 

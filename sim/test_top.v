@@ -23,11 +23,34 @@ localparam END_CYCLES = 100000;
 real CYCLE = 10;
 
 
+localparam CONV1 = 0;
+localparam CONV2 = 1;
+localparam CONV3_1 = 2;
+localparam CONV3 = 3;
+localparam CONV4_1 = 4;
+localparam CONV4_2 = 5;
+localparam CONV4 = 6;
+localparam CONV5 = 7;
 
 
 reg [BW_PER_SRAM_GROUP_ADDR-1:0] input_img [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
-reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat1_golden [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat1_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat2_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat3_1_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat3_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat4_1_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat4_2_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat4_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+//reg [BW_PER_SRAM_GROUP_ADDR-1:0] feat5_mem_placed [0:(MEM_H*MEM_W)/ACT_PER_ADDR - 1];  
+
 reg [BW_PER_ACT-1 : 0] feat1_ans [0 : MEM_H*MEM_W*CH_NUM-1];
+reg [BW_PER_ACT-1 : 0] feat2_ans [0 : MEM_H*MEM_W*CH_NUM-1];
+reg [BW_PER_ACT-1 : 0] feat3_1_ans [0 : MEM_H*MEM_W*CH_NUM-1];
+reg [BW_PER_ACT-1 : 0] feat3_ans [0 : MEM_H*MEM_W*CH_NUM-1];
+reg [BW_PER_ACT-1 : 0] feat4_1_ans [0 : MEM_H*MEM_W*CH_NUM-1];
+reg [BW_PER_ACT-1 : 0] feat4_2_ans [0 : MEM_H*MEM_W*CH_NUM-1];
+reg [BW_PER_ACT-1 : 0] feat4_ans [0 : MEM_H*MEM_W*CH_NUM-1];
+reg [BW_PER_ACT-1 : 0] feat5_ans [0 : MEM_H*MEM_W*CH_NUM-1];
 
 
 reg [BW_PER_WEIGHT * WEIGHT_PER_ADDR - 1 : 0] weights [0:109-1];
@@ -177,11 +200,48 @@ reg clk;
 reg rst_n;
 wire valid;
 
+integer mm,nn;
+integer mmm, nnn;
+integer addr;
+integer pos;
+integer error_count;
+reg[BW_PER_ACT-1:0] ans; 
+reg[BW_PER_ACT-1:0] your_ans; 
+
+integer test_layer;
+
+// ===== choose layer to test ==== //
+initial begin
+    `ifdef TEST_CONV1
+        test_layer = CONV1;
+    `elsif TEST_CONV2
+        test_layer = CONV2;
+    `elsif TEST_CONV3_1
+        test_layer = CONV3_1;
+    `elsif TEST_CONV3
+        test_layer = CONV3;
+    `elsif TEST_CONV4_1
+        test_layer = CONV4_1;
+    `elsif TEST_CONV4_2
+        test_layer = CONV4_2;
+    `elsif TEST_CONV4
+        test_layer = CONV4;
+    `elsif TEST_CONV5 
+        test_layer = CONV5;
+    `else 
+        test_layer = CONV1;
+    `endif
+end
+// =============================== //
 
 // ===== system reset ===== //
 initial begin
     clk = 0;
     rst_n = 1;
+    @(negedge clk);
+        rst_n = 1'b0;
+    @(negedge clk);
+        rst_n = 1'b1;
 end
 
 always #(CYCLE/2) clk = ~clk;
@@ -190,15 +250,17 @@ initial begin
     #(CYCLE*END_CYCLES);
     $finish;
 end
+// ========================//
 
 
 // ===== waveform dumpping ===== //
-/*
+
 initial begin
     $fsdbDumpfile("top.fsdb");
-    $fsdbDumpvars("+mda");
+    $fsdbDumpvars(n, Conv_top,"+mda"); // only dump top module
 end
-*/
+
+// =============================//
 
 
 
@@ -351,7 +413,14 @@ Conv_top(
 
 initial begin
     $readmemb("./images/img.dat", input_img);
-    $readmemb("./golden/feat1.dat", feat1_golden);
+    //$readmemb("./mem_placed_ans/feat1_mem_placement.dat", feat1_mem_placed);
+    //$readmemb("./mem_placed_ans/feat2_mem_placement.dat", feat2_mem_placed);
+    //$readmemb("./mem_placed_ans/feat3_1_mem_placement.dat", feat3_1_mem_placed);
+    //$readmemb("./mem_placed_ans/feat3_mem_placement.dat", feat3_mem_placed);
+    //$readmemb("./mem_placed_ans/feat4_1_mem_placement.dat", feat4_1_mem_placed);
+    //$readmemb("./mem_placed_ans/feat4_2_mem_placement.dat", feat4_2_mem_placed);
+    //$readmemb("./mem_placed_ans/feat4_mem_placement.dat", feat4_mem_placed);
+    //$readmemb("./mem_placed_ans/feat5_mem_placement.dat", feat5_mem_placed);
 end
 
 // ============ input image ===========//
@@ -404,34 +473,34 @@ initial begin
     for(j = 0 ; j < 192; j = j + 1)begin
         for(k = 0 ; k < 240; k = k + 1)begin
             if(j % 2 == 0 && k % 2 == 0)begin
-                sram_11520x270b_img_0.load_input_img((j/2)*120 + k/2, input_img[(j/2)*120 + k/2]);
+                sram_11520x270b_img_0.load_input_img((j/2)*120 + k/2, input_img[j*240 + k]);
             end
             else if (j % 2 == 0)begin
-                sram_11520x270b_img_1.load_input_img((j/2)*120 + k/2, input_img[(j/2)*120 + k/2]);
+                sram_11520x270b_img_1.load_input_img((j/2)*120 + k/2, input_img[j*240 + k]);
             end
             else if (k % 2 == 0)begin
-                sram_11520x270b_img_2.load_input_img((j/2)*120 + k/2, input_img[(j/2)*120 + k/2]);
+                sram_11520x270b_img_2.load_input_img((j/2)*120 + k/2, input_img[j*240 + k]);
             end
             else begin
-                sram_11520x270b_img_3.load_input_img((j/2)*120 + k/2, input_img[(j/2)*120 + k/2]);
+                sram_11520x270b_img_3.load_input_img((j/2)*120 + k/2, input_img[j*240 + k]);
             end
         end
     end
 // test 
-/*    
+/*
     for(j = 0 ; j < 192; j = j + 1)begin
         for(k = 0 ; k < 240; k = k + 1)begin
             if(j % 2 == 0 && k % 2 == 0)begin
-                sram_11520x270b_feat1_0.load_input_img((j/2)*120 + k/2, feat1_golden[j*240 + k]);
+                sram_11520x270b_feat1_0.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
             end
             else if (j % 2 == 0)begin
-                sram_11520x270b_feat1_1.load_input_img((j/2)*120 + k/2, feat1_golden[j*240 + k]);
+                sram_11520x270b_feat1_1.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
             end
             else if (k % 2 == 0)begin
-                sram_11520x270b_feat1_2.load_input_img((j/2)*120 + k/2, feat1_golden[j*240 + k]);
+                sram_11520x270b_feat1_2.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
             end
             else begin 
-                sram_11520x270b_feat1_3.load_input_img((j/2)*120 + k/2, feat1_golden[j*240 + k]);
+                sram_11520x270b_feat1_3.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
             end
         end
     end
@@ -776,26 +845,21 @@ end
 
 initial begin
     $readmemb("./golden/feat1_ans.dat", feat1_ans);
+    $readmemb("./golden/feat2_ans.dat", feat2_ans);
+    $readmemb("./golden/feat3_1_ans.dat", feat3_1_ans);
+    $readmemb("./golden/feat3_ans.dat", feat3_ans);
+    $readmemb("./golden/feat4_1_ans.dat", feat4_1_ans);
+    $readmemb("./golden/feat4_2_ans.dat", feat4_2_ans);
+    $readmemb("./golden/feat4_ans.dat", feat4_ans);
+    $readmemb("./golden/feat5_ans.dat", feat5_ans);
 end
 
-integer mm,nn;
-integer mmm, nnn;
-integer addr;
-integer pos;
-reg[BW_PER_ACT-1:0] ans; 
 
-
-assign valid =1;
 initial begin
-
+    error_count = 0;
     wait(valid);
 
     @(negedge clk);
-
-
-    $display("%b", sram_11520x270b_feat1_0.mem[0]);
-
-
 
     for(c = 0 ; c < 3 ; c = c + 1)begin
         for(m = 0 ; m < 576 ; m = m +1)begin
@@ -805,152 +869,267 @@ initial begin
                 mmm = m % 3;
                 nnn = n % 3;
                 addr = (mm/2) * 120 + (nn/2); 
-                ans = feat1_ans[c*576*720 + m*720 + n];
                 pos = (2-c)*90 + (2-mmm) * 30 + (2-nnn) * 10;
-                
-                //$display("m = %3d, n = %3d, ch = %1d, Ans = %10b", m, n, c,ans);    
-                //$display("m = %3d, n = %3d, ch = %1d, addr = %d", m, n, c,addr);    
+
+
+                case(test_layer)
+                    CONV1:   ans = feat1_ans[c*576*720 + m*720 + n];
+                    CONV2:   ans = feat2_ans[c*576*720 + m*720 + n];
+                    CONV3_1: ans = feat3_1_ans[c*576*720 + m*720 + n];
+                    CONV3:   ans = feat3_ans[c*576*720 + m*720 + n];
+                    CONV4_1: ans = feat4_1_ans[c*576*720 + m*720 + n];
+                    CONV4_2: ans = feat4_2_ans[c*576*720 + m*720 + n];
+                    CONV4:   ans = feat4_ans[c*576*720 + m*720 + n];
+                    CONV5:   ans = feat5_ans[c*576*720 + m*720 + n];
+                    default: ans = feat1_ans[c*576*720 + m*720 + n];
+                endcase
+            
                 if(mm % 2 == 0 && nn % 2 == 0)begin
-                    if(sram_11520x270b_feat1_0.mem[addr][pos+:10] === ans)begin
-                    
-                    end
-                    else begin
-                        $display("Wrong occur at m = %3d, n = %3d, ch = %1d, Your result = %10b, Ans = %10b", m, n, c, sram_11520x270b_feat1_0.mem[addr][pos+:10],ans);    
-                    end
+                    case(test_layer)
+                        CONV1:   your_ans = sram_11520x270b_feat1_0.mem[addr][pos+:10];
+                        CONV2:   your_ans = sram_11520x270b_feat2_0.mem[addr][pos+:10];
+                        CONV3_1: your_ans = sram_11520x270b_temp_0.mem[addr][pos+:10];
+                        CONV3:   your_ans = sram_11520x270b_feat3_0.mem[addr][pos+:10];
+                        CONV4_1: your_ans = sram_11520x270b_feat4_0.mem[addr][pos+:10];
+                        CONV4_2: your_ans = sram_11520x270b_temp_0.mem[addr][pos+:10];
+                        CONV4:   your_ans = sram_11520x270b_feat4_0.mem[addr][pos+:10];
+                        CONV5:   your_ans = sram_11520x270b_feat5_0.mem[addr][pos+:10];
+                        default: your_ans = sram_11520x270b_feat1_0.mem[addr][pos+:10];
+                    endcase
                 end
                 else if (mm % 2 == 0) begin
-                    if(sram_11520x270b_feat1_1.mem[addr][pos+:10] === ans)begin
-                    
-                    end
-                    else begin
-                        $display("Wrong occur at m = %3d, n = %3d, ch = %1d, Your result = %10b, Ans = %10b", m, n, c, sram_11520x270b_feat1_1.mem[addr][pos+:10],ans);    
-                    end
+                    case(test_layer)
+                        CONV1:   your_ans = sram_11520x270b_feat1_1.mem[addr][pos+:10];
+                        CONV2:   your_ans = sram_11520x270b_feat2_1.mem[addr][pos+:10];
+                        CONV3_1: your_ans = sram_11520x270b_temp_1.mem[addr][pos+:10];
+                        CONV3:   your_ans = sram_11520x270b_feat3_1.mem[addr][pos+:10];
+                        CONV4_1: your_ans = sram_11520x270b_feat4_1.mem[addr][pos+:10];
+                        CONV4_2: your_ans = sram_11520x270b_temp_1.mem[addr][pos+:10];
+                        CONV4:   your_ans = sram_11520x270b_feat4_1.mem[addr][pos+:10];
+                        CONV5:   your_ans = sram_11520x270b_feat5_1.mem[addr][pos+:10];
+                        default: your_ans = sram_11520x270b_feat1_1.mem[addr][pos+:10];
+                    endcase
                 end
                 else if (nn % 2 == 0) begin
-                    if(sram_11520x270b_feat1_2.mem[addr][pos+:10] === ans)begin
-                    
-                    end
-                    else begin
-                        $display("Wrong occur at m = %3d, n = %3d, ch = %1d, Your result = %10b, Ans = %10b", m, n, c, sram_11520x270b_feat1_2.mem[addr][pos+:10],ans);    
-                    end
+                    case(test_layer)
+                        CONV1:   your_ans = sram_11520x270b_feat1_2.mem[addr][pos+:10];
+                        CONV2:   your_ans = sram_11520x270b_feat2_2.mem[addr][pos+:10];
+                        CONV3_1: your_ans = sram_11520x270b_temp_2.mem[addr][pos+:10];
+                        CONV3:   your_ans = sram_11520x270b_feat3_2.mem[addr][pos+:10];
+                        CONV4_1: your_ans = sram_11520x270b_feat4_2.mem[addr][pos+:10];
+                        CONV4_2: your_ans = sram_11520x270b_temp_2.mem[addr][pos+:10];
+                        CONV4:   your_ans = sram_11520x270b_feat4_2.mem[addr][pos+:10];
+                        CONV5:   your_ans = sram_11520x270b_feat5_2.mem[addr][pos+:10];
+                        default: your_ans = sram_11520x270b_feat1_2.mem[addr][pos+:10];
+                    endcase
                 end
                 else begin
-                    if(sram_11520x270b_feat1_3.mem[addr][pos+:10] === ans)begin
-                    
-                    end
-                    else begin
-                        $display("Wrong occur at m = %3d, n = %3d, ch = %1d, Your result = %10b, Ans = %10b", m, n, c, sram_11520x270b_feat1_3.mem[addr][pos+:10],ans);    
-                    end
-
+                    case(test_layer)
+                        CONV1:   your_ans = sram_11520x270b_feat1_3.mem[addr][pos+:10];
+                        CONV2:   your_ans = sram_11520x270b_feat2_3.mem[addr][pos+:10];
+                        CONV3_1: your_ans = sram_11520x270b_temp_3.mem[addr][pos+:10];
+                        CONV3:   your_ans = sram_11520x270b_feat3_3.mem[addr][pos+:10];
+                        CONV4_1: your_ans = sram_11520x270b_feat4_3.mem[addr][pos+:10];
+                        CONV4_2: your_ans = sram_11520x270b_temp_3.mem[addr][pos+:10];
+                        CONV4:   your_ans = sram_11520x270b_feat4_3.mem[addr][pos+:10];
+                        CONV5:   your_ans = sram_11520x270b_feat5_3.mem[addr][pos+:10];
+                        default: your_ans = sram_11520x270b_feat1_3.mem[addr][pos+:10];
+                    endcase
                 end
+                
+                if(your_ans !== ans)begin
+                    $display("Wrong occur at m = %3d, n = %3d, ch = %1d, Your result = %10b, Ans = %10b", m, n, c, your_ans, ans);    
+                    error_count = error_count+1;
+                end
+                //else begin
+                //    $display("Correct!! m = %3d, n = %3d, ch = %1d, Your result = %10b, Ans = %10b", m, n, c, sram_11520x270b_feat1_0.mem[addr][pos+:10],ans);         
+                //end        
+            end
+        end
+    end
+
+    if(error_count == 0)begin
+        case(test_layer)
+            CONV1  :$display("Congratulations!, The CONV1 is correct");
+            CONV2  :$display("Congratulations!, The CONV2 is correct");
+            CONV3_1:$display("Congratulations!, The CONV3_1 is correct");
+            CONV3  :$display("Congratulations!, The CONV3 is correct");
+            CONV4_1:$display("Congratulations!, The CONV4_1 is correct");
+            CONV4_2:$display("Congratulations!, The CONV4_2 is correct");
+            CONV4  :$display("Congratulations!, The CONV4 is correct");
+            CONV5  :$display("Congratulations!, The CONV5 is correct");
+            default:$display("Congratulations!, The CONV1 is correct");
+        endcase
+    end
+    else begin
+        $display("There are still some errors");
+    end
+
+end
+
+// ====================================//
+
+integer a, b;
+
+reg signed [9:0] w1 [0:2];
+reg signed [9:0] w2 [0:2];
+reg signed [9:0] w3 [0:2];
+
+reg signed [9:0] bias [0:2];
+reg signed [17:0] bias2[0:2];
+reg signed [9:0] f [0:2];
+reg signed [21:0] out[0:2];
+reg [21:0] out2[0:2];
+reg [21:0] out3[0:2];
+//assign w1[0] = sram_109x90b_weight.mem[0][80+:10];
+//assign w1[1] = sram_109x90b_weight.mem[0][70+:10];
+//assign w1[2] = sram_109x90b_weight.mem[0][60+:10];
+//assign w2[0] = sram_109x90b_weight.mem[0][50+:10];
+//assign w2[1] = sram_109x90b_weight.mem[0][40+:10];
+//assign w2[2] = sram_109x90b_weight.mem[0][30+:10];
+//assign w3[0] = sram_109x90b_weight.mem[0][20+:10];
+//assign w3[1] = sram_109x90b_weight.mem[0][10+:10];
+//assign w3[2] = sram_109x90b_weight.mem[0][ 0+:10];
+
+//assign bias[0] = sram_24x10b_bias.mem[0];
+//assign bias[1] = sram_24x10b_bias.mem[1];
+//assign bias[2] = sram_24x10b_bias.mem[2];
+//
+//assign bias2[0] = {bias[0],8'd0};
+//assign bias2[1] = {bias[1],8'd0};
+//assign bias2[2] = {bias[2],8'd0};
+
+initial begin
+    for(a = 0 ; a < 576 ; a = a+1)begin
+        for(b = 0 ; b < 720 ; b = b + 1)begin 
+            if(a == 0 || a == 576-1 || b == 0 || b == 720-1)begin
+                writesram(a,b,0,10'd0);
+                writesram(a,b,1,10'd0);
+                writesram(a,b,2,10'd0);
+            end
+            else begin
+                readsram(a-1,b-1,0,f[0]);
+                readsram(a-1,b-1,1,f[1]);
+                readsram(a-1,b-1,2,f[2]);
+
+                w1[0] = sram_109x90b_weight.mem[0][80+:10];
+                w1[1] = sram_109x90b_weight.mem[0][70+:10];
+                w1[2] = sram_109x90b_weight.mem[0][60+:10];
+
+                w2[0] = sram_109x90b_weight.mem[0][50+:10];
+                w2[1] = sram_109x90b_weight.mem[0][40+:10];
+                w2[2] = sram_109x90b_weight.mem[0][30+:10];
+                
+                w3[0] = sram_109x90b_weight.mem[0][20+:10];
+                w3[1] = sram_109x90b_weight.mem[0][10+:10];
+                w3[2] = sram_109x90b_weight.mem[0][ 0+:10];
+
+                bias[0] = sram_24x10b_bias.mem[0];
+                bias[1] = sram_24x10b_bias.mem[1];
+                bias[2] = sram_24x10b_bias.mem[2];
+                
+                
+                bias2[0] = {bias[0],8'd0};
+                bias2[1] = {bias[1],8'd0};
+                bias2[2] = {bias[2],8'd0};
+
+
+                out[0] = f[0] * w1[0] + 
+                         f[1] * w1[1] +
+                         f[2] * w1[2] + bias2[0];
+
+                out[1] = f[0] * w2[0] + 
+                         f[1] * w2[1] +
+                         f[2] * w2[2] + bias2[1];
+                
+                out[2] = f[0] * w3[0] + 
+                         f[1] * w3[1] +
+                         f[2] * w3[2] + bias2[2];
+                
+                out2[0] = out[0] + 8'b1000_0000;
+                out2[1] = out[1] + 8'b1000_0000;
+                out2[2] = out[2] + 8'b1000_0000;
+                  
+                if(out2[0][21] == 1)begin
+                end
+                else begin
+                    if(out2[0][21:17] != 5'b11111)begin
+                        //overflow
+                        out2 = 
+                    end
+                end
+                writesram(a,b,0,out2[0][8+:10]);
+                writesram(a,b,1,out2[1][8+:10]);
+                writesram(a,b,2,out2[2][8+:10]);
+
             end
         end
     end
 end
 
-// ====================================//
 
+task writesram(
+    input integer x,
+    input integer y,
+    input integer c,
+    input [9:0] data_in
+);
+    if((x/3)%2 == 0 && (y/3)%2 == 0)begin
+        sram_11520x270b_feat1_0.load_a_position((x/6)*120 + y/6, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+    end
+    else if ((x/3)%2 == 0)begin
+        sram_11520x270b_feat1_1.load_a_position((x/6)*120 + y/6, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+    end
+    else if ((y/3)%2 == 0)begin
+        sram_11520x270b_feat1_2.load_a_position((x/6)*120 + y/6, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+    end
+    else begin
+        sram_11520x270b_feat1_3.load_a_position((x/6)*120 + y/6, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+    end
+endtask
 
-
-
-
-reg [21:0] test;
-reg signed [21:0] test2;
-
-reg signed [5:0] test3;
-
-reg signed [2:0] a,b,cc,d,e;
-
-reg signed [9:0] in[0:2];
-reg signed [9:0] w[0:2];
-reg signed [9:0] bias;
-reg signed [17:0] bias2;
-
-reg signed [21:0] out;
-reg signed [21:0] out2;
-
-initial begin
-
-    in[0] = input_img[0][260 +: 10];
-    in[1] = input_img[0][170 +: 10];
-    in[2] = input_img[0][ 80 +: 10];
-
-    w[0] = weights[0][80+:10];
-    w[1] = weights[0][70+:10];
-    w[2] = weights[0][60+:10];
-
-    bias = biases[0];
-    
-    bias2 = {bias,8'd0};
-    
-    /*
-    out = in[0] * w[0] + 
-          in[1] * w[1] +
-          in[2] * w[2] + bias << 8;
-    */
-    out2 = in[0] * w[0] + 
-           in[1] * w[1] +
-           in[2] * w[2] + bias2 + 8'b1000_0000;
-    
-    $display("%b", $signed(out2[8 +: 10]));
-
-    //a = input_img[0][260 +: 10];
-    //b = weights[0][80 +: 10];
-    
-    //c = a*b 
-    
-    //test = {{10{input_img[0][260+:10]}}, input_img[0][260+:10]} * {{10{weights[0][80+:10]}},weights[0][80+:10]} +
-         //  {{10{input_img[0][170+:10]}}, input_img[0][170+:10]} * {{10{weights[0][70+:10]}},weights[0][70+:10]} +
-         //  {{10{input_img[0][170+:10]}}, input_img[0][170+:10]} * {{10{weights[0][70+:10]}},weights[0][70+:10]} +
-           
-    //test =  {{10{input_img[0][260+:10]}}, input_img[0][260+:10]} * {{10{weights[0][80+:10]}},weights[0][80+:10]};
-    //test2 = input_img[0][260+:10] * weights[0][80+:10];
-    
-    //test3 = 3'b111 * 3'b101;
-    //test3 = 6'b111111 * 6'b000101;
-    
-    a = 3'b111; //-1
-    b = 3'b101; //-3
-
-    cc = 3'b111; //-1
-    d = 3'b010; // 2
-
-    e = 3'b101; //-3
-    test3 = a*b + cc * d + e;
-    
-    $display("%d", $signed(out));
-    $display("%d", $signed(out2[8 +: 10]));
-    $display("%d", $signed(test3));
-    $display("%d", 3/2);
-end
-
-
-
-
-
-
-
-
+task readsram(
+    input integer x,
+    input integer y,
+    input integer c,
+    output reg  [9:0] data_out
+);
+    begin
+        if((x/3)%2 == 0 && (y/3)%2 == 0)begin
+            data_out = sram_11520x270b_img_0.mem[(x/6)*120 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+        end
+        else if ((x/3)%2 == 0)begin
+            data_out = sram_11520x270b_img_1.mem[(x/6)*120 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+        end
+        else if ((y/3)%2 == 0)begin
+            data_out = sram_11520x270b_img_2.mem[(x/6)*120 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+        end
+        else begin
+            data_out = sram_11520x270b_img_3.mem[(x/6)*120 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+        end
+    end
+endtask
 
 /*
-reg [16*8-1:0] jpg_filename;
-
-reg [7:0] char_in;
-
-integer file_in;
-integer i;
-
-initial begin
-    jpg_filename = "./images/img.jpg";
-    file_in = $fopen(jpg_filename, "rb");
-
-    for(i = 0 ; i < 20 ; i = i + 1)begin
-        char_in = $fgetc(file_in);
-        
-        $display("%d", char_in);
+ for(j = 0 ; j < 192; j = j + 1)begin
+        for(k = 0 ; k < 240; k = k + 1)begin
+            if(j % 2 == 0 && k % 2 == 0)begin
+                sram_11520x270b_feat1_0.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
+            end
+            else if (j % 2 == 0)begin
+                sram_11520x270b_feat1_1.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
+            end
+            else if (k % 2 == 0)begin
+                sram_11520x270b_feat1_2.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
+            end
+            else begin 
+                sram_11520x270b_feat1_3.load_input_img((j/2)*120 + k/2, feat1_mem_placed[j*240 + k]);
+            end
+        end
     end
-end
+
 */
+
 
 endmodule
 
