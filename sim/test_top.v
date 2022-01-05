@@ -13,8 +13,8 @@ localparam BW_PER_SRAM_GROUP_ADDR = CH_NUM*ACT_PER_ADDR*BW_PER_ACT;
 //localparam MEM_H = (IMG_H % 3 == 0)? IMG_H : IMG_H + (3 - IMG_H % 3);
 //localparam MEM_W = (IMG_W % 3 == 0)? IMG_W : IMG_W + (3 - IMG_W % 3);
 
-localparam MEM_H = 96;
-localparam MEM_W = 120;
+localparam MEM_H = 48;
+localparam MEM_W = 60;
 
 localparam BW_PER_WEIGHT = 10;
 localparam BW_PER_BIAS = 10; 
@@ -22,7 +22,7 @@ localparam BW_PER_BIAS = 10;
 localparam WEIGHT_PER_ADDR = 9;
 localparam BIAS_PER_ADDR = 1;
 
-localparam END_CYCLES = 2000;
+localparam END_CYCLES = 4000;
 real CYCLE = 10;
 
 
@@ -62,10 +62,10 @@ reg [BW_PER_BIAS * BIAS_PER_ADDR - 1 : 0] biases [0:24-1];
 wire [6:0] sram_raddr_weight;
 wire [4:0] sram_raddr_bias;
 
-wire [10:0] sram_raddr_0;
-wire [10:0] sram_raddr_1;
-wire [10:0] sram_raddr_2;
-wire [10:0] sram_raddr_3;
+wire [8:0] sram_raddr_0;
+wire [8:0] sram_raddr_1;
+wire [8:0] sram_raddr_2;
+wire [8:0] sram_raddr_3;
 
 
 wire [BW_PER_WEIGHT * WEIGHT_PER_ADDR - 1 : 0] sram_rdata_weight; 
@@ -83,13 +83,19 @@ wire sram_wen_3;
 
 wire [BW_PER_SRAM_GROUP_ADDR - 1 : 0] sram_wdata;
 
-wire [10:0] sram_waddr;
+wire [6:0] sram_waddr;
 
 wire [CH_NUM*ACT_PER_ADDR-1:0] sram_wordmask;
 
 
+wire valid_conv1;
+reg shift_finish;
+
+
 integer i, j, k;
 integer c, m, n;
+
+integer p,q,r;
 
 reg clk;
 reg rst_n;
@@ -206,7 +212,10 @@ Conv_top(
 
 .sram_waddr(sram_waddr),
 
-.sram_wdata(sram_wdata)
+.sram_wdata(sram_wdata),
+
+.valid_conv1(valid_conv1),
+.shift_finish(shift_finish)
 
 );
 
@@ -225,49 +234,208 @@ initial begin
     //$readmemb("./mem_placed_ans/feat4_mem_placement.dat", feat4_mem_placed);
     //$readmemb("./mem_placed_ans/feat5_mem_placement.dat", feat5_mem_placed);
 end
+// =========== tmp sram =====================//
 
-// =========== sram to store feature map  ========//
-sram_1920x270b sram_1920x270b_0(
+wire[6:0] sram_raddr_tmp_0;
+wire[6:0] sram_raddr_tmp_1;
+wire[6:0] sram_raddr_tmp_2;
+wire[6:0] sram_raddr_tmp_3;
+
+wire[270-1:0] sram_rdata_tmp_0;
+wire[270-1:0] sram_rdata_tmp_1;
+wire[270-1:0] sram_rdata_tmp_2;
+wire[270-1:0] sram_rdata_tmp_3;
+
+sram_80x270b sram_80x270b_0(
 .clk(clk),
 .wordmask(sram_wordmask),  //27 bits
 .csb(1'b0),  //chip enable
 .wsb(sram_wen_0),  //write enable
 .wdata(sram_wdata), //write data 270 bits
 .waddr(sram_waddr), //write address
-.raddr(sram_raddr_0), //read address
-.rdata(sram_rdata_0) //read data 270 bits
+.raddr(sram_raddr_tmp_0), //read address
+.rdata(sram_rdata_tmp_0) //read data 270 bits
 );
-sram_1920x270b sram_1920x270b_1(
+
+sram_80x270b sram_80x270b_1(
 .clk(clk),
 .wordmask(sram_wordmask),  //27 bits
 .csb(1'b0),  //chip enable
 .wsb(sram_wen_1),  //write enable
 .wdata(sram_wdata), //write data 270 bits
 .waddr(sram_waddr), //write address
-.raddr(sram_raddr_1), //read address
-.rdata(sram_rdata_1) //read data 270 bits
+.raddr(sram_raddr_tmp_1), //read address
+.rdata(sram_rdata_tmp_1) //read data 270 bits
 );
-sram_1920x270b sram_1920x270b_2(
+
+sram_80x270b sram_80x270b_2(
 .clk(clk),
 .wordmask(sram_wordmask),  //27 bits
 .csb(1'b0),  //chip enable
 .wsb(sram_wen_2),  //write enable
 .wdata(sram_wdata), //write data 270 bits
 .waddr(sram_waddr), //write address
-.raddr(sram_raddr_2), //read address
-.rdata(sram_rdata_2) //read data 270 bits
+.raddr(sram_raddr_tmp_2), //read address
+.rdata(sram_rdata_tmp_2) //read data 270 bits
 );
-sram_1920x270b sram_1920x270b_3(
+
+sram_80x270b sram_80x270b_3(
 .clk(clk),
 .wordmask(sram_wordmask),  //27 bits
 .csb(1'b0),  //chip enable
 .wsb(sram_wen_3),  //write enable
 .wdata(sram_wdata), //write data 270 bits
 .waddr(sram_waddr), //write address
+.raddr(sram_raddr_tmp_3), //read address
+.rdata(sram_rdata_tmp_3) //read data 270 bits
+);
+
+reg [9:0] pixel;
+
+initial begin
+
+    shift_finish = 0;
+    
+    wait(valid_conv1);
+    
+    for(r = 0 ; r < 3 ; r = r + 1)begin
+        for(p = 0 ; p < 48 ; p = p + 1)begin
+            for(q = 0 ; q < 60 ; q = q + 1)begin
+                if(p == 0 || q == 0 || p == 47 || q == 59)begin
+                    writesram(p,q,r,1,10'd0);
+                end
+                else begin
+                    readsram(p-1,q-1,r,pixel);
+                    writesram(p,q,r,1,pixel);
+                end
+            end
+        end
+    end
+    
+    @(posedge clk)
+        shift_finish = 1;
+    @(posedge clk)
+        shift_finish = 0;
+    #(CYCLE)
+    
+
+    wait(valid_conv1);
+    
+    for(r = 0 ; r < 3 ; r = r + 1)begin
+        for(p = 0 ; p < 48 ; p = p + 1)begin
+            for(q = 0 ; q < 60 ; q = q + 1)begin
+                if(p == 0 || q == 0 || p == 47 || q == 59)begin
+                    writesram(p,q,r,2,10'd0);
+                end
+                else begin
+                    readsram(p-1,q-1,r,pixel);
+                    writesram(p,q,r,2,pixel);
+                end
+            end
+        end
+    end
+    @(posedge clk)
+        shift_finish = 1;
+    @(posedge clk)
+        shift_finish = 0;
+
+end
+
+//===========================================//
+
+// =========== sram to store feature map  ========//
+sram_480x270b sram_480x270b_0(
+.clk(clk),
+.wordmask(27'd0),  //27 bits
+.csb(1'b0),  //chip enable
+.wsb(1'b1),  //write enable
+.wdata(270'd0), //write data 270 bits
+.waddr(9'd0), //write address
+.raddr(sram_raddr_0), //read address
+.rdata(sram_rdata_0) //read data 270 bits
+);
+sram_480x270b sram_480x270b_1(
+.clk(clk),
+.wordmask(27'd0),  //27 bits
+.csb(1'b0),  //chip enable
+.wsb(1'b1),  //write enable
+.wdata(270'd0), //write data 270 bits
+.waddr(9'd0), //write address
+.raddr(sram_raddr_1), //read address
+.rdata(sram_rdata_1) //read data 270 bits
+);
+sram_480x270b sram_480x270b_2(
+.clk(clk),
+.wordmask(27'd0),  //27 bits
+.csb(1'b0),  //chip enable
+.wsb(1'b1),  //write enable
+.wdata(270'd0), //write data 270 bits
+.waddr(9'd0), //write address
+.raddr(sram_raddr_2), //read address
+.rdata(sram_rdata_2) //read data 270 bits
+);
+sram_480x270b sram_480x270b_3(
+.clk(clk),
+.wordmask(27'd0),  //27 bits
+.csb(1'b0),  //chip enable
+.wsb(1'b1),  //write enable
+.wdata(270'd0), //write data 270 bits
+.waddr(9'd0), //write address
 .raddr(sram_raddr_3), //read address
 .rdata(sram_rdata_3) //read data 270 bits
 );
 // ==============================================//
+
+
+
+// =========== sram to store weight and bias ====//
+
+
+
+// =========== sram to store feature map  ========//
+//sram_480x270b sram_480x270b_0(
+//.clk(clk),
+//.wordmask(sram_wordmask),  //27 bits
+//.csb(1'b0),  //chip enable
+//.wsb(sram_wen_0),  //write enable
+//.wdata(sram_wdata), //write data 270 bits
+//.waddr(sram_waddr), //write address
+//.raddr(sram_raddr_0), //read address
+//.rdata(sram_rdata_0) //read data 270 bits
+//);
+//sram_480x270b sram_480x270b_1(
+//.clk(clk),
+//.wordmask(sram_wordmask),  //27 bits
+//.csb(1'b0),  //chip enable
+//.wsb(sram_wen_1),  //write enable
+//.wdata(sram_wdata), //write data 270 bits
+//.waddr(sram_waddr), //write address
+//.raddr(sram_raddr_1), //read address
+//.rdata(sram_rdata_1) //read data 270 bits
+//);
+//sram_480x270b sram_480x270b_2(
+//.clk(clk),
+//.wordmask(sram_wordmask),  //27 bits
+//.csb(1'b0),  //chip enable
+//.wsb(sram_wen_2),  //write enable
+//.wdata(sram_wdata), //write data 270 bits
+//.waddr(sram_waddr), //write address
+//.raddr(sram_raddr_2), //read address
+//.rdata(sram_rdata_2) //read data 270 bits
+//);
+//sram_480x270b sram_480x270b_3(
+//.clk(clk),
+//.wordmask(sram_wordmask),  //27 bits
+//.csb(1'b0),  //chip enable
+//.wsb(sram_wen_3),  //write enable
+//.wdata(sram_wdata), //write data 270 bits
+//.waddr(sram_waddr), //write address
+//.raddr(sram_raddr_3), //read address
+//.rdata(sram_rdata_3) //read data 270 bits
+//);
+// ==============================================//
+
+
 
 // =========== sram to store weight and bias ====//
 sram_109x90b sram_109x90b_weight(
@@ -296,19 +464,19 @@ sram_24x10b sram_24x10b_bias(
 // load input image
 initial begin
     
-    for(j = 0 ; j < 32; j = j + 1)begin
-        for(k = 0 ; k < 40; k = k + 1)begin
+    for(j = 0 ; j < 16; j = j + 1)begin
+        for(k = 0 ; k < 20; k = k + 1)begin
             if(j % 2 == 0 && k % 2 == 0)begin
-                sram_1920x270b_0.load_input_img((j/2)*20 + k/2, input_img[j*40 + k]);
+                sram_480x270b_0.load_input_img((j/2)*10 + k/2, input_img[j*20 + k]);
             end
             else if (j % 2 == 0)begin
-                sram_1920x270b_1.load_input_img((j/2)*20 + k/2, input_img[j*40 + k]);
+                sram_480x270b_1.load_input_img((j/2)*10 + k/2, input_img[j*20 + k]);
             end
             else if (k % 2 == 0)begin
-                sram_1920x270b_2.load_input_img((j/2)*20 + k/2, input_img[j*40 + k]);
+                sram_480x270b_2.load_input_img((j/2)*10 + k/2, input_img[j*20 + k]);
             end
             else begin
-                sram_1920x270b_3.load_input_img((j/2)*20 + k/2, input_img[j*40 + k]);
+                sram_480x270b_3.load_input_img((j/2)*10 + k/2, input_img[j*20 + k]);
             end
         end
     end
@@ -372,78 +540,78 @@ initial begin
     @(negedge clk);
 
     for(c = 0 ; c < 3 ; c = c + 1)begin
-        for(m = 0 ; m < 96 ; m = m +1)begin
-            for(n = 0 ; n < 120 ; n = n + 1)begin
+        for(m = 0 ; m < 48 ; m = m +1)begin
+            for(n = 0 ; n < 60 ; n = n + 1)begin
                 mm = m / 3;
                 nn = n / 3;
                 mmm = m % 3;
                 nnn = n % 3;
-                addr = (mm/2) * 20 + (nn/2); 
+                addr = (mm/2) * 10 + (nn/2); 
                 pos = (2-c)*90 + (2-mmm) * 30 + (2-nnn) * 10;
 
 
                 case(test_layer)
-                    CONV1:   ans = feat1_ans  [c*96*120 + m*120 + n];
-                    CONV2:   ans = feat2_ans  [c*96*120 + m*120 + n];
-                    CONV3_1: ans = feat3_1_ans[c*96*120 + m*120 + n];
-                    CONV3:   ans = feat3_ans  [c*96*120 + m*120 + n];
-                    CONV4_1: ans = feat4_1_ans[c*96*120 + m*120 + n];
-                    CONV4_2: ans = feat4_2_ans[c*96*120 + m*120 + n];
-                    CONV4:   ans = feat4_ans  [c*96*120 + m*120 + n];
-                    CONV5:   ans = feat5_ans  [c*96*120 + m*120 + n];
-                    default: ans = feat1_ans  [c*96*120 + m*120 + n];
+                    CONV1:   ans = feat1_ans  [c*48*60 + m*60 + n];
+                    CONV2:   ans = feat2_ans  [c*48*60 + m*60 + n];
+                    CONV3_1: ans = feat3_1_ans[c*48*60 + m*60 + n];
+                    CONV3:   ans = feat3_ans  [c*48*60 + m*60 + n];
+                    CONV4_1: ans = feat4_1_ans[c*48*60 + m*60 + n];
+                    CONV4_2: ans = feat4_2_ans[c*48*60 + m*60 + n];
+                    CONV4:   ans = feat4_ans  [c*48*60 + m*60 + n];
+                    CONV5:   ans = feat5_ans  [c*48*60 + m*60 + n];
+                    default: ans = feat1_ans  [c*48*60 + m*60 + n];
                 endcase
             
                 if(mm % 2 == 0 && nn % 2 == 0)begin
                     case(test_layer)
-                        CONV1:   your_ans = sram_1920x270b_0.mem[addr+320 ][pos+:10];
-                        CONV2:   your_ans = sram_1920x270b_0.mem[addr+640 ][pos+:10];
-                        CONV3_1: your_ans = sram_1920x270b_0.mem[addr+1600][pos+:10];
-                        CONV3:   your_ans = sram_1920x270b_0.mem[addr+960 ][pos+:10];
-                        CONV4_1: your_ans = sram_1920x270b_0.mem[addr+1280][pos+:10];
-                        CONV4_2: your_ans = sram_1920x270b_0.mem[addr+1600][pos+:10];
-                        CONV4:   your_ans = sram_1920x270b_0.mem[addr+1280][pos+:10];
-                        CONV5:   your_ans = sram_1920x270b_0.mem[addr+1600][pos+:10];
-                        default: your_ans = sram_1920x270b_0.mem[addr+320 ][pos+:10];
+                        CONV1:   your_ans = sram_480x270b_0.mem[addr+80  ][pos+:10];
+                        CONV2:   your_ans = sram_480x270b_0.mem[addr+160 ][pos+:10];
+                        CONV3_1: your_ans = sram_480x270b_0.mem[addr+400 ][pos+:10];
+                        CONV3:   your_ans = sram_480x270b_0.mem[addr+240 ][pos+:10];
+                        CONV4_1: your_ans = sram_480x270b_0.mem[addr+320 ][pos+:10];
+                        CONV4_2: your_ans = sram_480x270b_0.mem[addr+400 ][pos+:10];
+                        CONV4:   your_ans = sram_480x270b_0.mem[addr+320 ][pos+:10];
+                        CONV5:   your_ans = sram_480x270b_0.mem[addr+400 ][pos+:10];
+                        default: your_ans = sram_480x270b_0.mem[addr+80  ][pos+:10];
                     endcase
                 end
                 else if (mm % 2 == 0) begin
                     case(test_layer)
-                        CONV1:   your_ans = sram_1920x270b_1.mem[addr+320 ][pos+:10];
-                        CONV2:   your_ans = sram_1920x270b_1.mem[addr+640 ][pos+:10];
-                        CONV3_1: your_ans = sram_1920x270b_1.mem[addr+1600][pos+:10];
-                        CONV3:   your_ans = sram_1920x270b_1.mem[addr+960 ][pos+:10];
-                        CONV4_1: your_ans = sram_1920x270b_1.mem[addr+1280][pos+:10];
-                        CONV4_2: your_ans = sram_1920x270b_1.mem[addr+1600][pos+:10];
-                        CONV4:   your_ans = sram_1920x270b_1.mem[addr+1280][pos+:10];
-                        CONV5:   your_ans = sram_1920x270b_1.mem[addr+1600][pos+:10];
-                        default: your_ans = sram_1920x270b_1.mem[addr+320 ][pos+:10];
+                        CONV1:   your_ans = sram_480x270b_1.mem[addr+80  ][pos+:10];
+                        CONV2:   your_ans = sram_480x270b_1.mem[addr+160 ][pos+:10];
+                        CONV3_1: your_ans = sram_480x270b_1.mem[addr+400 ][pos+:10];
+                        CONV3:   your_ans = sram_480x270b_1.mem[addr+240 ][pos+:10];
+                        CONV4_1: your_ans = sram_480x270b_1.mem[addr+320 ][pos+:10];
+                        CONV4_2: your_ans = sram_480x270b_1.mem[addr+400 ][pos+:10];
+                        CONV4:   your_ans = sram_480x270b_1.mem[addr+320 ][pos+:10];
+                        CONV5:   your_ans = sram_480x270b_1.mem[addr+400 ][pos+:10];
+                        default: your_ans = sram_480x270b_1.mem[addr+80  ][pos+:10];
                     endcase
                 end
                 else if (nn % 2 == 0) begin
                     case(test_layer)
-                        CONV1:   your_ans = sram_1920x270b_2.mem[addr+320 ][pos+:10];
-                        CONV2:   your_ans = sram_1920x270b_2.mem[addr+640 ][pos+:10];
-                        CONV3_1: your_ans = sram_1920x270b_2.mem[addr+1600][pos+:10];
-                        CONV3:   your_ans = sram_1920x270b_2.mem[addr+960 ][pos+:10];
-                        CONV4_1: your_ans = sram_1920x270b_2.mem[addr+1280][pos+:10];
-                        CONV4_2: your_ans = sram_1920x270b_2.mem[addr+1600][pos+:10];
-                        CONV4:   your_ans = sram_1920x270b_2.mem[addr+1280][pos+:10];
-                        CONV5:   your_ans = sram_1920x270b_2.mem[addr+1600][pos+:10];
-                        default: your_ans = sram_1920x270b_2.mem[addr+320 ][pos+:10];
+                        CONV1:   your_ans = sram_480x270b_2.mem[addr+80  ][pos+:10];
+                        CONV2:   your_ans = sram_480x270b_2.mem[addr+160 ][pos+:10];
+                        CONV3_1: your_ans = sram_480x270b_2.mem[addr+400 ][pos+:10];
+                        CONV3:   your_ans = sram_480x270b_2.mem[addr+240 ][pos+:10];
+                        CONV4_1: your_ans = sram_480x270b_2.mem[addr+320 ][pos+:10];
+                        CONV4_2: your_ans = sram_480x270b_2.mem[addr+400 ][pos+:10];
+                        CONV4:   your_ans = sram_480x270b_2.mem[addr+320 ][pos+:10];
+                        CONV5:   your_ans = sram_480x270b_2.mem[addr+400 ][pos+:10];
+                        default: your_ans = sram_480x270b_2.mem[addr+80  ][pos+:10];
                     endcase
                 end
                 else begin
                     case(test_layer)
-                        CONV1:   your_ans = sram_1920x270b_3.mem[addr+320 ][pos+:10];
-                        CONV2:   your_ans = sram_1920x270b_3.mem[addr+640 ][pos+:10];
-                        CONV3_1: your_ans = sram_1920x270b_3.mem[addr+1600][pos+:10];
-                        CONV3:   your_ans = sram_1920x270b_3.mem[addr+960 ][pos+:10];
-                        CONV4_1: your_ans = sram_1920x270b_3.mem[addr+1280][pos+:10];
-                        CONV4_2: your_ans = sram_1920x270b_3.mem[addr+1600][pos+:10];
-                        CONV4:   your_ans = sram_1920x270b_3.mem[addr+1280][pos+:10];
-                        CONV5:   your_ans = sram_1920x270b_3.mem[addr+1600][pos+:10];
-                        default: your_ans = sram_1920x270b_3.mem[addr+320 ][pos+:10];
+                        CONV1:   your_ans = sram_480x270b_3.mem[addr+80  ][pos+:10];
+                        CONV2:   your_ans = sram_480x270b_3.mem[addr+160 ][pos+:10];
+                        CONV3_1: your_ans = sram_480x270b_3.mem[addr+400 ][pos+:10];
+                        CONV3:   your_ans = sram_480x270b_3.mem[addr+240 ][pos+:10];
+                        CONV4_1: your_ans = sram_480x270b_3.mem[addr+320 ][pos+:10];
+                        CONV4_2: your_ans = sram_480x270b_3.mem[addr+400 ][pos+:10];
+                        CONV4:   your_ans = sram_480x270b_3.mem[addr+320 ][pos+:10];
+                        CONV5:   your_ans = sram_480x270b_3.mem[addr+400 ][pos+:10];
+                        default: your_ans = sram_480x270b_3.mem[addr+80  ][pos+:10];
                     endcase
                 end
                 
@@ -585,7 +753,7 @@ initial begin
         end
     end
 end
-
+*/
 
 task writesram(
     input integer x,
@@ -595,16 +763,16 @@ task writesram(
     input [9:0] data_in
 );
     if((x/3)%2 == 0 && (y/3)%2 == 0)begin
-        sram_1920x270b_0.load_a_position((x/6)*20 + y/6 + ram_num * 320, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+        sram_480x270b_0.load_a_position((x/6)*10 + y/6 + ram_num * 80, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
     end
     else if ((x/3)%2 == 0)begin
-        sram_1920x270b_1.load_a_position((x/6)*20 + y/6 + ram_num * 320, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+        sram_480x270b_1.load_a_position((x/6)*10 + y/6 + ram_num * 80, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
     end
     else if ((y/3)%2 == 0)begin
-        sram_1920x270b_2.load_a_position((x/6)*20 + y/6 + ram_num * 320, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+        sram_480x270b_2.load_a_position((x/6)*10 + y/6 + ram_num * 80, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
     end
     else begin
-        sram_1920x270b_3.load_a_position((x/6)*20 + y/6 + ram_num * 320, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
+        sram_480x270b_3.load_a_position((x/6)*10 + y/6 + ram_num * 80, (2-c)*9 + (2-x%3)*3 + (2-y%3), data_in);
     end
 endtask
 
@@ -612,25 +780,25 @@ task readsram(
     input integer x,
     input integer y,
     input integer c,
-    input integer ram_num,
+    //input integer ram_num,
     output reg  [9:0] data_out
 );
     begin
         if((x/3)%2 == 0 && (y/3)%2 == 0)begin
-            data_out = sram_1920x270b_0.mem[(x/6)*20 + y/6 + ram_num * 320][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+            data_out = sram_80x270b_0.mem[(x/6)*10 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
         end
         else if ((x/3)%2 == 0)begin
-            data_out = sram_1920x270b_1.mem[(x/6)*20 + y/6 + ram_num * 320][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+            data_out = sram_80x270b_1.mem[(x/6)*10 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
         end
         else if ((y/3)%2 == 0)begin
-            data_out = sram_1920x270b_2.mem[(x/6)*20 + y/6 + ram_num * 320][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+            data_out = sram_80x270b_2.mem[(x/6)*10 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
         end
         else begin
-            data_out = sram_1920x270b_3.mem[(x/6)*20 + y/6 + ram_num * 320][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
+            data_out = sram_80x270b_3.mem[(x/6)*10 + y/6][((2-c)*9 + (2-x%3)*3 + (2-y%3)) * 10 +: 10];
         end
     end
 endtask
-*/
+
 endmodule
 
 
