@@ -53,7 +53,12 @@ localparam [4:0] WAIT_SHIFT_MEM = 3;
 localparam [4:0] BLANK2 = 4;
 localparam [4:0] CONV2 = 5;
 localparam [4:0] WAIT_SHIFT_MEM2 = 6;
-localparam [4:0] FINISH = 7;
+localparam [4:0] BLANK3 = 7;
+localparam [4:0] CONV3_1 = 8;
+localparam [4:0] WAIT_SHIFT_MEM3 = 9;
+
+
+localparam [4:0] FINISH = 10;
 
 
 reg [8:0] sram_raddr_0_n;
@@ -74,14 +79,9 @@ reg [270-1:0] sram_wdata_n;
 reg valid_n;
 reg valid_conv1_n;
 
-//reg rst_n_d;
-//reg [90-1:0] sram_rdata_weight_d;
-//reg [10-1:0] sram_rdata_bias_d;
-//reg enable_d;
-
 
 reg [4:0] state, state_n;
-reg [1:0] in_cnt, in_cnt_n;
+reg [3:0] in_cnt, in_cnt_n;
 
 
 reg [9:0] w_n [0:9-1];
@@ -97,10 +97,10 @@ reg [270-1:0] in;
 reg signed [20-1:0] mul_result_n[0:81-1];
 reg signed [20-1:0] mul_result[0:81-1];
 
-reg signed [22:0] sum_n [0:27-1];
-reg signed [22:0] sum [0:27-1];
-reg [22:0] unsigned_sum[0:27-1];
-reg [22:0] out [0:27];
+reg signed [25:0] sum_n [0:27-1];
+reg signed [25:0] sum [0:27-1];
+reg [25:0] unsigned_sum[0:27-1];
+reg [25:0] out [0:27];
 
 
 reg [6:0] in_x, in_y;
@@ -117,13 +117,14 @@ reg [6:0] y_delay[0:2];
 reg [1:0] bias_cnt, bias_cnt_n;
 
 reg [5:0] weight_cnt, weight_cnt_n;
-reg [5:0] weight_cnt_delay [0:4];
+reg [5:0] weight_cnt_delay [0:8];
 
 
 
 wire [6:0] x_d2 = x_delay[2];
 wire [6:0] y_d2 = y_delay[2];
 
+reg [3:0] layer_cnt;
 
 integer i,j,k,l,m,n,o,p,q,r,s,t;
 
@@ -152,16 +153,17 @@ end
 
 /* ========================================== */
 
-/* =========== input register =============== */
-always@(posedge clk)begin
-    //rst_n_d <= rst_n;
-    //sram_rdata_weight_d <= sram_rdata_weight;
-    //sram_rdata_bias_d <= sram_rdata_bias;
-    //enable_d <= enable;
-end
-/* ========================================== */
 
 wire [1:0] test = {y[0],x[0]};
+
+always@(*)begin
+    if(state == CONV3_1)begin
+        layer_cnt = (in_cnt >=3) ? in_cnt - 3 : in_cnt;
+    end
+    else begin
+        layer_cnt = in_cnt;
+    end
+end
 
 always@(*)begin
     if(state == CONV1)begin
@@ -186,117 +188,115 @@ always@(*)begin
     else begin
         case({y[0],x[0]})
             2'b00:begin
-                in[ 0*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 1*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 2*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[ 3*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 4*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 5*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 6*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[ 7*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[ 8*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 9*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[10*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[11*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[12*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 0)*10 +: 10];
-                in[13*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[14*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[15*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[16*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[17*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[18*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[19*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[20*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[21*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[22*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[23*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[24*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 4)*10 +: 10];
-            end
-            2'b01:begin
-                in[ 0*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 1*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 2*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[ 3*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 4*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 5*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 6*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[ 7*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[ 8*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 9*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 4)*10 +: 10]; 
-                in[10*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[11*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[12*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 0)*10 +: 10];
-                in[13*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[14*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[15*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[16*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[17*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[18*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[19*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[20*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[21*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[22*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[23*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[24*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 4)*10 +: 10];
+                in[ 0*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 1*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 2*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[ 3*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 4*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 5*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 6*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[ 7*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[ 8*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 9*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[10*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[11*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[12*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 0)*10 +: 10];
+                in[13*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[14*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[15*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[16*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[17*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[18*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[19*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[20*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[21*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[22*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[23*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[24*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 4)*10 +: 10];
+            end                                      
+            2'b01:begin                             
+                in[ 0*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 1*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 2*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[ 3*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 4*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 5*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 6*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[ 7*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[ 8*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 9*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 4)*10 +: 10]; 
+                in[10*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[11*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[12*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 0)*10 +: 10];
+                in[13*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[14*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[15*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[16*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[17*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[18*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[19*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[20*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[21*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[22*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[23*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[24*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 4)*10 +: 10];
 
             end
             2'b10:begin
-                in[ 0*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 1*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 2*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[ 3*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 4*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 5*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 6*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[ 7*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[ 8*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 9*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 4)*10 +: 10];     
-                in[10*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[11*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[12*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 0)*10 +: 10];
-                in[13*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[14*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[15*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[16*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[17*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[18*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[19*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[20*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[21*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[22*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[23*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[24*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 4)*10 +: 10];
+                in[ 0*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 1*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 2*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[ 3*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 4*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 5*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 6*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[ 7*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[ 8*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 9*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 4)*10 +: 10];     
+                in[10*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[11*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[12*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 0)*10 +: 10];
+                in[13*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[14*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[15*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[16*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[17*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[18*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[19*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[20*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[21*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[22*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[23*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[24*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 4)*10 +: 10];
 
             end
             default:begin
-                in[ 0*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 1*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 2*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[ 3*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[ 4*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[ 5*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 6*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[ 7*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[ 8*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[ 9*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[10*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[11*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[12*10 +: 10] = sram_rdata_3[(9*(2-in_cnt) + 0)*10 +: 10];
-                in[13*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 2)*10 +: 10];
-                in[14*10 +: 10] = sram_rdata_2[(9*(2-in_cnt) + 1)*10 +: 10];
-                in[15*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[16*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[17*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 6)*10 +: 10];
-                in[18*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 8)*10 +: 10];
-                in[19*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 7)*10 +: 10];
-                in[20*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[21*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 4)*10 +: 10];
-                in[22*10 +: 10] = sram_rdata_1[(9*(2-in_cnt) + 3)*10 +: 10];
-                in[23*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 5)*10 +: 10];
-                in[24*10 +: 10] = sram_rdata_0[(9*(2-in_cnt) + 4)*10 +: 10];
-
+                in[ 0*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 1*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 2*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[ 3*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[ 4*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[ 5*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 6*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[ 7*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[ 8*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[ 9*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[10*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[11*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[12*10 +: 10] = sram_rdata_3[(9*(2-layer_cnt) + 0)*10 +: 10];
+                in[13*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 2)*10 +: 10];
+                in[14*10 +: 10] = sram_rdata_2[(9*(2-layer_cnt) + 1)*10 +: 10];
+                in[15*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[16*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[17*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 6)*10 +: 10];
+                in[18*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 8)*10 +: 10];
+                in[19*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 7)*10 +: 10];
+                in[20*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[21*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 4)*10 +: 10];
+                in[22*10 +: 10] = sram_rdata_1[(9*(2-layer_cnt) + 3)*10 +: 10];
+                in[23*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 5)*10 +: 10];
+                in[24*10 +: 10] = sram_rdata_0[(9*(2-layer_cnt) + 4)*10 +: 10];
             end
-        
         endcase
         in[25*10 +: 10] = 10'd0;
         in[26*10 +: 10] = 10'd0; 
@@ -380,7 +380,8 @@ always@(*)begin
             end
         end
     end
-    else if(state == CONV2)begin
+    //else if(state == CONV2)begin
+    else begin
         for(m = 0 ; m < 3 ; m = m + 1)begin
             for(n = 0 ; n < 3 ; n = n + 1)begin
                 mul_result_n[m*3+n + 0] = f[m*5+n] * w[8-(m*3+n)];
@@ -427,11 +428,13 @@ always@(*)begin
             end
         end
     end
+    /*
     else begin
         for(m=0; m < 81; m = m + 1)begin
             mul_result_n[m] = 0;
         end
     end
+    */
 end
 
 always@(posedge clk)begin
@@ -448,7 +451,8 @@ always@(*)begin
             end
         end
     end
-    else if(state == CONV2)begin
+    //else if(state == CONV2)begin
+    else begin
         for(s = 0 ; s < 9 ; s = s + 1)begin
             sum_n[s] = mul_result[s*9 + 0] + mul_result[s*9 + 1] + mul_result[s*9 + 2] + 
                        mul_result[s*9 + 3] + mul_result[s*9 + 4] + mul_result[s*9 + 5] + 
@@ -458,11 +462,13 @@ always@(*)begin
             sum_n[s] = 0;
         end
     end
+    /*
     else begin
         for(s = 0 ; s < 27 ; s = s + 1)begin
             sum_n[s] = 0;
         end
     end
+    */
 end
 
 always@(posedge clk)begin
@@ -471,7 +477,8 @@ always@(posedge clk)begin
             sum[q] <= sum_n[q];
         end
     end
-    else if (state == CONV2)begin
+    else begin
+    //else if (state == CONV2)begin
         for(q = 0 ; q < 9 ; q = q + 1)begin
             sum[q] <= (in_cnt == 2)? b[0] + sum_n[q] : sum[q] + sum_n[q];
         end
@@ -493,7 +500,8 @@ always@(*)begin
             sram_wdata_n[(26-r)*10 +: 10] = out[r][8+:10];
         end
     end
-    else if (state == CONV2)begin
+    //else if (state == CONV2)begin
+    else begin
         for(r = 0 ; r < 9 ;r = r + 1)begin
             sram_wdata_n[((8-r)+18)*10 +: 10] = out[r][8+:10];
         end
@@ -504,9 +512,11 @@ always@(*)begin
             sram_wdata_n[((8-r))*10 +: 10] = out[r][8+:10];
         end
     end
+    /*
     else begin
         sram_wdata_n = 0;
     end
+    */
 end
 
 wire [1:0] test_delay = {x_delay[2][0],y_delay[2][0]};
@@ -546,6 +556,12 @@ always@(*)begin
         endcase
     end
     else if (state == CONV2) begin
+        sram_wen_0_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==0) : 1;
+        sram_wen_1_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==0) : 1;
+        sram_wen_2_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==1) : 1;
+        sram_wen_3_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==1) : 1;        
+    end
+    else if (state == CONV3_1)begin
         sram_wen_0_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==0) : 1;
         sram_wen_1_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==0) : 1;
         sram_wen_2_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==1) : 1;
@@ -594,6 +610,36 @@ always@(*)begin
         sram_wordmask_n[25] = ~(weight_cnt_delay[4]==0); 
         sram_wordmask_n[26] = ~(weight_cnt_delay[4]==0); 
     end
+    else if (state == CONV3_1)begin
+        sram_wordmask_n[ 0] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 1] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 2] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 3] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 4] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 5] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 6] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 7] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 8] = ~(weight_cnt_delay[7]==5); 
+        sram_wordmask_n[ 9] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[10] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[11] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[12] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[13] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[14] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[15] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[16] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[17] = ~(weight_cnt_delay[7]==4); 
+        sram_wordmask_n[18] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[19] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[20] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[21] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[22] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[23] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[24] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[25] = ~(weight_cnt_delay[7]==3); 
+        sram_wordmask_n[26] = ~(weight_cnt_delay[7]==3); 
+
+    end
     else begin
         sram_wordmask_n = 27'b1111_1111_1111_1111_1111_1111_111;
     end
@@ -601,11 +647,17 @@ end
 
 
 always@(*)begin
-    if(state == CONV2)begin
+    if(state == IDLE)begin
+        weight_cnt_n = 0;
+    end
+    else if(state == CONV2)begin
+        weight_cnt_n = (in_x == 19 && in_y == 15 && in_cnt == 0)? weight_cnt + 1 : weight_cnt;
+    end
+    else if(state == CONV3_1)begin
         weight_cnt_n = (in_x == 19 && in_y == 15 && in_cnt == 0)? weight_cnt + 1 : weight_cnt;
     end
     else begin
-        weight_cnt_n = 0;
+        weight_cnt_n = weight_cnt;
     end
 end
 /*
@@ -630,11 +682,25 @@ always@(*)begin
         sram_raddr_2_n = in_x[6:1] + in_y[6:1]*10;
         sram_raddr_3_n = in_x[6:1] + in_y[6:1]*10;
     end
-    else begin
+    else if (state == BLANK2 || state == CONV2) begin
         sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 80;
         sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 80;
         sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 80;
         sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 80;
+    end
+    else begin
+        if(in_cnt == 1 || in_cnt == 2 || in_cnt == 3)begin
+            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 160;
+            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 160;
+            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 160;
+            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 160;
+        end
+        else begin
+            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 80;
+            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 80;
+            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 80;
+            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 80;
+        end
     end
 end
 
@@ -652,6 +718,26 @@ always@(*)begin
         end
         else begin
             sram_raddr_weight_n = 1 + weight_cnt*3;
+        end
+    end
+    else if(state == BLANK3 || state == CONV3_1)begin
+        if(in_cnt == 4)begin
+            sram_raddr_weight_n = 0 + (weight_cnt_delay[2]-3)*6 + 10;
+        end
+        else if (in_cnt == 5)begin
+            sram_raddr_weight_n = 1 + (weight_cnt_delay[2]-3)*6 + 10;
+        end
+        else if (in_cnt == 0)begin
+            sram_raddr_weight_n = 2 + (weight_cnt_delay[2]-3)*6 + 10;
+        end
+        else if (in_cnt == 1)begin
+            sram_raddr_weight_n = 3 + (weight_cnt_delay[2]-3)*6 + 10;
+        end
+        else if (in_cnt == 2)begin
+            sram_raddr_weight_n = 4 + (weight_cnt_delay[2]-3)*6 + 10;
+        end
+        else begin
+            sram_raddr_weight_n = 5 + (weight_cnt_delay[2]-3)*6 + 10;
         end
     end
     else begin
@@ -673,6 +759,9 @@ always@(*)begin
     else if(state == BLANK2 || state == CONV2)begin
         sram_raddr_bias_n = (in_x == 0 && in_y == 0 && in_cnt == 2) ? sram_raddr_bias + 1 : sram_raddr_bias;
         bias_cnt_n = 0;
+    end
+    else if(state == CONV3_1)begin
+        sram_raddr_bias_n = (in_x == 0 && in_y == 0 && in_cnt == 5) ? sram_raddr_bias + 1 : sram_raddr_bias;
     end
     else begin
         sram_raddr_bias_n = sram_raddr_bias;
@@ -702,6 +791,10 @@ always@(posedge clk)begin
     weight_cnt_delay[2] <= weight_cnt_delay[1];
     weight_cnt_delay[3] <= weight_cnt_delay[2];
     weight_cnt_delay[4] <= weight_cnt_delay[3];
+    weight_cnt_delay[5] <= weight_cnt_delay[4];
+    weight_cnt_delay[6] <= weight_cnt_delay[5];
+    weight_cnt_delay[7] <= weight_cnt_delay[6];
+    weight_cnt_delay[8] <= weight_cnt_delay[7];
 
     weight_cnt <= weight_cnt_n;
 
@@ -712,7 +805,7 @@ end
 
 always@(*)begin
     valid_n = (state == FINISH)? 1:0; 
-    valid_conv1_n = (state == WAIT_SHIFT_MEM || state == WAIT_SHIFT_MEM2)? 1: 0;
+    valid_conv1_n = (state == WAIT_SHIFT_MEM || state == WAIT_SHIFT_MEM2 || state == WAIT_SHIFT_MEM3)? 1: 0;
 end
 
 always@(posedge clk)begin
@@ -792,7 +885,39 @@ always@(*)begin
         end
         
         WAIT_SHIFT_MEM2:begin
-            state_n = (shift_finish) ? FINISH : WAIT_SHIFT_MEM2;
+            state_n = (shift_finish) ? BLANK3 : WAIT_SHIFT_MEM2;
+            in_cnt_n = 0;
+
+            in_x_n = 0;
+            in_y_n = 0;
+
+            x_n = 0;
+            y_n = 0;
+        end
+        BLANK3:begin
+            state_n = (in_cnt == 5)? CONV3_1 : BLANK3;
+            in_cnt_n = (in_cnt == 5)? 0 : in_cnt + 1;
+
+            in_x_n = 0;
+            in_y_n = 0;
+
+            x_n = 0;
+            y_n = 0;
+        end
+        CONV3_1:begin
+            state_n = (x_delay[2] == 19 && y_delay[2] == 15 && in_cnt == 2 && weight_cnt_delay[8] == 5)? WAIT_SHIFT_MEM3 : CONV3_1;
+
+            in_cnt_n = (in_cnt == 5) ? 0 : in_cnt + 1;
+
+            in_x_n = (in_cnt == 3) ? (in_x == 19) ? 0 : in_x + 1 : in_x;
+            in_y_n = (in_cnt == 3) ? (in_x == 19) ? (in_y == 15)? 0 : in_y + 1 : in_y : in_y;
+
+            x_n = (in_cnt == 5) ? (x == 19) ? 0 : x + 1 : x;
+            y_n = (in_cnt == 5) ? (x == 19) ? (y==15) ? 0 :  y + 1 : y : y;
+        end
+
+        WAIT_SHIFT_MEM3:begin
+            state_n = (shift_finish) ? FINISH : WAIT_SHIFT_MEM3;
             in_cnt_n = 0;
 
             in_x_n = 0;
