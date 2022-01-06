@@ -22,7 +22,7 @@ localparam BW_PER_BIAS = 10;
 localparam WEIGHT_PER_ADDR = 9;
 localparam BIAS_PER_ADDR = 1;
 
-localparam END_CYCLES = 20000;
+localparam END_CYCLES = 28000;
 real CYCLE = 10;
 
 
@@ -296,6 +296,7 @@ initial begin
 
     shift_finish = 0;
     
+    // shift conv1 result    
     wait(valid_conv1);
     
     for(r = 0 ; r < 3 ; r = r + 1)begin
@@ -316,9 +317,11 @@ initial begin
         shift_finish = 1;
     @(posedge clk)
         shift_finish = 0;
-    #(CYCLE)
     
 
+    // shift conv2 result    
+    #(CYCLE)
+    
     wait(valid_conv1);
     
     for(r = 0 ; r < 3 ; r = r + 1)begin
@@ -340,6 +343,7 @@ initial begin
         shift_finish = 0;
     
 
+    // shift conv3_1 result    
     #(CYCLE)
     
     wait(valid_conv1);
@@ -363,6 +367,7 @@ initial begin
         shift_finish = 0;
     
         
+    // shift conv3 result    
     #(CYCLE)
     
     wait(valid_conv1);
@@ -386,6 +391,7 @@ initial begin
         shift_finish = 0;
 
     
+    // shift conv4_1 result    
     #(CYCLE)
     
     wait(valid_conv1);
@@ -407,6 +413,53 @@ initial begin
         shift_finish = 1;
     @(posedge clk)
         shift_finish = 0;
+    
+    // shift conv4_2 result    
+    #(CYCLE)
+    
+    wait(valid_conv1);
+    
+    for(r = 0 ; r < 3 ; r = r + 1)begin
+        for(p = 0 ; p < 48 ; p = p + 1)begin
+            for(q = 0 ; q < 60 ; q = q + 1)begin
+                if(p == 0 || q == 0 || p == 47 || q == 59)begin
+                    writesram(p,q,r,5,10'd0);
+                end
+                else begin
+                    readsram(p-1,q-1,r,pixel);
+                    writesram(p,q,r,5,pixel);
+                end
+            end
+        end
+    end
+    @(posedge clk)
+        shift_finish = 1;
+    @(posedge clk)
+        shift_finish = 0;
+
+    // shift conv4 result
+    #(CYCLE)
+    
+    wait(valid_conv1);
+    
+    for(r = 0 ; r < 3 ; r = r + 1)begin
+        for(p = 0 ; p < 48 ; p = p + 1)begin
+            for(q = 0 ; q < 60 ; q = q + 1)begin
+                if(p == 0 || q == 0 || p == 47 || q == 59)begin
+                    writesram(p,q,r,4,10'd0);
+                end
+                else begin
+                    readsram(p-1,q-1,r,pixel);
+                    writesram(p,q,r,4,pixel);
+                end
+            end
+        end
+    end
+    @(posedge clk)
+        shift_finish = 1;
+    @(posedge clk)
+        shift_finish = 0;
+
 
 end
 
