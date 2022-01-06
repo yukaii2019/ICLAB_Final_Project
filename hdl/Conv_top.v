@@ -53,12 +53,20 @@ localparam [4:0] WAIT_SHIFT_MEM = 3;
 localparam [4:0] BLANK2 = 4;
 localparam [4:0] CONV2 = 5;
 localparam [4:0] WAIT_SHIFT_MEM2 = 6;
-localparam [4:0] BLANK3 = 7;
+localparam [4:0] BLANK3_1 = 7;
 localparam [4:0] CONV3_1 = 8;
-localparam [4:0] WAIT_SHIFT_MEM3 = 9;
+localparam [4:0] WAIT_SHIFT_MEM3_1 = 9;
+
+localparam [4:0] BLANK3 = 10;
+localparam [4:0] CONV3 = 11;
+localparam [4:0] WAIT_SHIFT_MEM3 = 12;
+
+localparam [4:0] BLANK4_1 = 13;
+localparam [4:0] CONV4_1 = 14;
+localparam [4:0] WAIT_SHIFT_MEM4_1 = 15;
 
 
-localparam [4:0] FINISH = 10;
+localparam [4:0] FINISH = 16;
 
 
 reg [8:0] sram_raddr_0_n;
@@ -126,6 +134,8 @@ wire [6:0] y_d2 = y_delay[2];
 
 reg [3:0] layer_cnt;
 
+reg [1:0] word_mask_det;
+
 integer i,j,k,l,m,n,o,p,q,r,s,t;
 
 
@@ -157,7 +167,7 @@ end
 wire [1:0] test = {y[0],x[0]};
 
 always@(*)begin
-    if(state == CONV3_1)begin
+    if(state == CONV3_1 || state == CONV4_1)begin
         layer_cnt = (in_cnt >=3) ? in_cnt - 3 : in_cnt;
     end
     else begin
@@ -555,13 +565,13 @@ always@(*)begin
             end
         endcase
     end
-    else if (state == CONV2) begin
+    else if (state == CONV2 || state == CONV3) begin
         sram_wen_0_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==0) : 1;
         sram_wen_1_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==0) : 1;
         sram_wen_2_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==1) : 1;
         sram_wen_3_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==1) : 1;        
     end
-    else if (state == CONV3_1)begin
+    else if (state == CONV3_1 || state == CONV4_1)begin
         sram_wen_0_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==0) : 1;
         sram_wen_1_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==0) : 1;
         sram_wen_2_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==1) : 1;
@@ -575,41 +585,60 @@ always@(*)begin
     end
 end
 
+
+always@(*)begin
+    case(state)
+        CONV2:begin
+            word_mask_det = weight_cnt_delay[4];
+        end
+        CONV3_1:begin
+            word_mask_det = weight_cnt_delay[7]-3; 
+        end
+        CONV3:begin
+            word_mask_det = weight_cnt_delay[4]-6;
+        end
+        default:begin
+            word_mask_det = weight_cnt_delay[7]-9;
+        end
+    endcase
+end
+
+
 always@(*)begin
     if(state == CONV1)begin
         sram_wordmask_n = 27'd0;
     end
-    else if (state == CONV2)begin
-        sram_wordmask_n[ 0] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 1] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 2] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 3] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 4] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 5] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 6] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 7] = ~(weight_cnt_delay[4]==2); 
-        sram_wordmask_n[ 8] = ~(weight_cnt_delay[4]==2); 
-        
-        sram_wordmask_n[ 9] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[10] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[11] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[12] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[13] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[14] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[15] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[16] = ~(weight_cnt_delay[4]==1); 
-        sram_wordmask_n[17] = ~(weight_cnt_delay[4]==1); 
-        
-        sram_wordmask_n[18] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[19] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[20] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[21] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[22] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[23] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[24] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[25] = ~(weight_cnt_delay[4]==0); 
-        sram_wordmask_n[26] = ~(weight_cnt_delay[4]==0); 
+    //else if (state == CONV2)begin
+    else begin
+        sram_wordmask_n[ 0] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 1] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 2] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 3] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 4] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 5] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 6] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 7] = ~(word_mask_det==2); 
+        sram_wordmask_n[ 8] = ~(word_mask_det==2);      
+        sram_wordmask_n[ 9] = ~(word_mask_det==1); 
+        sram_wordmask_n[10] = ~(word_mask_det==1); 
+        sram_wordmask_n[11] = ~(word_mask_det==1); 
+        sram_wordmask_n[12] = ~(word_mask_det==1); 
+        sram_wordmask_n[13] = ~(word_mask_det==1); 
+        sram_wordmask_n[14] = ~(word_mask_det==1); 
+        sram_wordmask_n[15] = ~(word_mask_det==1); 
+        sram_wordmask_n[16] = ~(word_mask_det==1); 
+        sram_wordmask_n[17] = ~(word_mask_det==1);       
+        sram_wordmask_n[18] = ~(word_mask_det==0); 
+        sram_wordmask_n[19] = ~(word_mask_det==0); 
+        sram_wordmask_n[20] = ~(word_mask_det==0); 
+        sram_wordmask_n[21] = ~(word_mask_det==0); 
+        sram_wordmask_n[22] = ~(word_mask_det==0); 
+        sram_wordmask_n[23] = ~(word_mask_det==0); 
+        sram_wordmask_n[24] = ~(word_mask_det==0); 
+        sram_wordmask_n[25] = ~(word_mask_det==0); 
+        sram_wordmask_n[26] = ~(word_mask_det==0); 
     end
+    /*
     else if (state == CONV3_1)begin
         sram_wordmask_n[ 0] = ~(weight_cnt_delay[7]==5); 
         sram_wordmask_n[ 1] = ~(weight_cnt_delay[7]==5); 
@@ -643,6 +672,7 @@ always@(*)begin
     else begin
         sram_wordmask_n = 27'b1111_1111_1111_1111_1111_1111_111;
     end
+    */
 end
 
 
@@ -650,10 +680,7 @@ always@(*)begin
     if(state == IDLE)begin
         weight_cnt_n = 0;
     end
-    else if(state == CONV2)begin
-        weight_cnt_n = (in_x == 19 && in_y == 15 && in_cnt == 0)? weight_cnt + 1 : weight_cnt;
-    end
-    else if(state == CONV3_1)begin
+    else if(state == CONV2 || state == CONV3_1 || state == CONV3 || state == CONV4_1)begin
         weight_cnt_n = (in_x == 19 && in_y == 15 && in_cnt == 0)? weight_cnt + 1 : weight_cnt;
     end
     else begin
@@ -688,7 +715,8 @@ always@(*)begin
         sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 80;
         sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 80;
     end
-    else begin
+    else if (state == BLANK3_1 || state == CONV3_1) begin
+
         if(in_cnt == 1 || in_cnt == 2 || in_cnt == 3)begin
             sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 160;
             sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 160;
@@ -702,6 +730,29 @@ always@(*)begin
             sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 80;
         end
     end
+    else if (state == BLANK3 || state == CONV3) begin
+        sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 400;
+        sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 400;
+        sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 400;
+        sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 400;
+    end
+    
+    else begin
+
+        if(in_cnt == 1 || in_cnt == 2 || in_cnt == 3)begin
+            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 240;
+            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 240;
+            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 240;
+            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 240;
+        end
+        else begin
+            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 160;
+            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 160;
+            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 160;
+            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 160;
+        end
+    end
+
 end
 
 
@@ -710,17 +761,17 @@ always@(*)begin
         sram_raddr_weight_n = 0;
     end
     else if(state == BLANK2 || state == CONV2)begin
-        if(in_cnt == 2)begin
-            sram_raddr_weight_n = 2 + weight_cnt*3;
+        if(in_cnt == 1)begin
+            sram_raddr_weight_n = 0 + weight_cnt*3 + 1;
         end
-        else if(in_cnt == 0)begin
-            sram_raddr_weight_n = 3 + weight_cnt*3;
+        else if(in_cnt == 2)begin
+            sram_raddr_weight_n = 1 + weight_cnt*3 + 1;
         end
         else begin
-            sram_raddr_weight_n = 1 + weight_cnt*3;
+            sram_raddr_weight_n = 2 + weight_cnt*3 + 1;
         end
     end
-    else if(state == BLANK3 || state == CONV3_1)begin
+    else if(state == BLANK3_1 || state == CONV3_1)begin
         if(in_cnt == 4)begin
             sram_raddr_weight_n = 0 + (weight_cnt_delay[2]-3)*6 + 10;
         end
@@ -740,6 +791,37 @@ always@(*)begin
             sram_raddr_weight_n = 5 + (weight_cnt_delay[2]-3)*6 + 10;
         end
     end
+    else if(state == BLANK3 || state == CONV3)begin
+        if(in_cnt == 1)begin
+            sram_raddr_weight_n = 0 + (weight_cnt-6)*3 + 28;
+        end
+        else if(in_cnt == 2)begin
+            sram_raddr_weight_n = 1 + (weight_cnt-6)*3 + 28;
+        end
+        else begin
+            sram_raddr_weight_n = 2 + (weight_cnt-6)*3 + 28;
+        end
+    end
+    else if(state == BLANK4_1 || state == CONV4_1)begin
+        if(in_cnt == 4)begin
+            sram_raddr_weight_n = 0 + (weight_cnt_delay[2]-9)*6 + 37;
+        end
+        else if (in_cnt == 5)begin
+            sram_raddr_weight_n = 1 + (weight_cnt_delay[2]-9)*6 + 37;
+        end
+        else if (in_cnt == 0)begin
+            sram_raddr_weight_n = 2 + (weight_cnt_delay[2]-9)*6 + 37;
+        end
+        else if (in_cnt == 1)begin
+            sram_raddr_weight_n = 3 + (weight_cnt_delay[2]-9)*6 + 37;
+        end
+        else if (in_cnt == 2)begin
+            sram_raddr_weight_n = 4 + (weight_cnt_delay[2]-9)*6 + 37;
+        end
+        else begin
+            sram_raddr_weight_n = 5 + (weight_cnt_delay[2]-9)*6 + 37;
+        end
+    end
     else begin
         sram_raddr_weight_n = 0;
     end
@@ -756,11 +838,11 @@ always@(*)begin
         sram_raddr_bias_n = (sram_raddr_bias == 2)? sram_raddr_bias : sram_raddr_bias + 1;
         bias_cnt_n = (bias_cnt == 3)? bias_cnt : bias_cnt+1;
     end
-    else if(state == BLANK2 || state == CONV2)begin
+    else if(state == BLANK2 || state == CONV2 ||  state == CONV3)begin
         sram_raddr_bias_n = (in_x == 0 && in_y == 0 && in_cnt == 2) ? sram_raddr_bias + 1 : sram_raddr_bias;
         bias_cnt_n = 0;
     end
-    else if(state == CONV3_1)begin
+    else if(state == CONV3_1 || state == CONV4_1)begin
         sram_raddr_bias_n = (in_x == 0 && in_y == 0 && in_cnt == 5) ? sram_raddr_bias + 1 : sram_raddr_bias;
     end
     else begin
@@ -805,7 +887,8 @@ end
 
 always@(*)begin
     valid_n = (state == FINISH)? 1:0; 
-    valid_conv1_n = (state == WAIT_SHIFT_MEM || state == WAIT_SHIFT_MEM2 || state == WAIT_SHIFT_MEM3)? 1: 0;
+    valid_conv1_n = (state == WAIT_SHIFT_MEM  || state == WAIT_SHIFT_MEM2 || state == WAIT_SHIFT_MEM3_1 || state == WAIT_SHIFT_MEM3 || 
+                     state == WAIT_SHIFT_MEM4_1 )? 1: 0;
 end
 
 always@(posedge clk)begin
@@ -885,7 +968,7 @@ always@(*)begin
         end
         
         WAIT_SHIFT_MEM2:begin
-            state_n = (shift_finish) ? BLANK3 : WAIT_SHIFT_MEM2;
+            state_n = (shift_finish) ? BLANK3_1 : WAIT_SHIFT_MEM2;
             in_cnt_n = 0;
 
             in_x_n = 0;
@@ -894,8 +977,8 @@ always@(*)begin
             x_n = 0;
             y_n = 0;
         end
-        BLANK3:begin
-            state_n = (in_cnt == 5)? CONV3_1 : BLANK3;
+        BLANK3_1:begin
+            state_n = (in_cnt == 5)? CONV3_1 : BLANK3_1;
             in_cnt_n = (in_cnt == 5)? 0 : in_cnt + 1;
 
             in_x_n = 0;
@@ -905,7 +988,7 @@ always@(*)begin
             y_n = 0;
         end
         CONV3_1:begin
-            state_n = (x_delay[2] == 19 && y_delay[2] == 15 && in_cnt == 2 && weight_cnt_delay[8] == 5)? WAIT_SHIFT_MEM3 : CONV3_1;
+            state_n = (x_delay[2] == 19 && y_delay[2] == 15 && in_cnt == 2 && weight_cnt_delay[8] == 5)? WAIT_SHIFT_MEM3_1 : CONV3_1;
 
             in_cnt_n = (in_cnt == 5) ? 0 : in_cnt + 1;
 
@@ -916,8 +999,74 @@ always@(*)begin
             y_n = (in_cnt == 5) ? (x == 19) ? (y==15) ? 0 :  y + 1 : y : y;
         end
 
+        WAIT_SHIFT_MEM3_1:begin
+            state_n = (shift_finish) ? BLANK3 : WAIT_SHIFT_MEM3_1;
+            in_cnt_n = 0;
+
+            in_x_n = 0;
+            in_y_n = 0;
+
+            x_n = 0;
+            y_n = 0;
+        end
+        BLANK3:begin
+            state_n = (in_cnt == 2)? CONV3 : BLANK3;
+            in_cnt_n = (in_cnt == 2)? 0 : in_cnt + 1;
+
+            //in_x_n = (in_cnt == 0)? 0 : in_x + 1;
+            in_x_n = 0;
+            in_y_n = 0;
+
+            x_n = 0;
+            y_n = 0;
+        end
+        CONV3:begin
+            state_n =  (x_delay[2] == 19 && y_delay[2] == 15 && in_cnt == 2 && weight_cnt_delay[4] == 8) ? WAIT_SHIFT_MEM3 : CONV3;
+            in_cnt_n = (in_cnt == 2) ? 0 : in_cnt + 1;
+
+            in_x_n = (in_cnt == 0) ? (in_x == 19) ? 0 : in_x + 1 : in_x;
+            in_y_n = (in_cnt == 0) ? (in_x == 19) ? (in_y == 15)? 0 : in_y + 1 : in_y : in_y;
+
+            
+            x_n = (in_cnt == 2) ? (x == 19) ? 0 : x + 1 : x;
+            y_n = (in_cnt == 2) ? (x == 19) ? (y==15) ? 0 :  y + 1 : y : y;
+
+        end
         WAIT_SHIFT_MEM3:begin
-            state_n = (shift_finish) ? FINISH : WAIT_SHIFT_MEM3;
+            state_n = (shift_finish) ? BLANK4_1 : WAIT_SHIFT_MEM3;
+            in_cnt_n = 0;
+
+            in_x_n = 0;
+            in_y_n = 0;
+
+            x_n = 0;
+            y_n = 0;
+        end
+        
+        BLANK4_1:begin
+            state_n = (in_cnt == 5)? CONV4_1 : BLANK4_1;
+            in_cnt_n = (in_cnt == 5)? 0 : in_cnt + 1;
+
+            in_x_n = 0;
+            in_y_n = 0;
+
+            x_n = 0;
+            y_n = 0;
+        end
+        CONV4_1:begin
+            state_n = (x_delay[2] == 19 && y_delay[2] == 15 && in_cnt == 2 && weight_cnt_delay[8] == 11)? WAIT_SHIFT_MEM4_1 : CONV4_1;
+
+            in_cnt_n = (in_cnt == 5) ? 0 : in_cnt + 1;
+
+            in_x_n = (in_cnt == 3) ? (in_x == 19) ? 0 : in_x + 1 : in_x;
+            in_y_n = (in_cnt == 3) ? (in_x == 19) ? (in_y == 15)? 0 : in_y + 1 : in_y : in_y;
+
+            x_n = (in_cnt == 5) ? (x == 19) ? 0 : x + 1 : x;
+            y_n = (in_cnt == 5) ? (x == 19) ? (y==15) ? 0 :  y + 1 : y : y;
+        end
+
+        WAIT_SHIFT_MEM4_1:begin
+            state_n = (shift_finish) ? FINISH : WAIT_SHIFT_MEM4_1;
             in_cnt_n = 0;
 
             in_x_n = 0;
