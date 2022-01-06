@@ -22,7 +22,7 @@ localparam BW_PER_BIAS = 10;
 localparam WEIGHT_PER_ADDR = 9;
 localparam BIAS_PER_ADDR = 1;
 
-localparam END_CYCLES = 28000;
+localparam END_CYCLES = 35000;
 real CYCLE = 10;
 
 
@@ -459,6 +459,29 @@ initial begin
         shift_finish = 1;
     @(posedge clk)
         shift_finish = 0;
+    
+    // shift conv5 result
+    #(CYCLE)
+    
+    wait(valid_conv1);
+    
+    for(r = 0 ; r < 3 ; r = r + 1)begin
+        for(p = 0 ; p < 48 ; p = p + 1)begin
+            for(q = 0 ; q < 60 ; q = q + 1)begin
+                if(p == 0 || q == 0 || p == 47 || q == 59)begin
+                    writesram(p,q,r,5,10'd0);
+                end
+                else begin
+                    readsram(p-1,q-1,r,pixel);
+                    writesram(p,q,r,5,pixel);
+                end
+            end
+        end
+    end
+    @(posedge clk)
+        shift_finish = 1;
+    @(posedge clk)
+        shift_finish = 0;
 
 
 end
@@ -629,7 +652,7 @@ end
 
 // =========load weight and bias========= //
 initial begin
-    for (i = 0 ; i < 108 ; i = i + 1)begin
+    for (i = 0 ; i < 109 ; i = i + 1)begin
         sram_109x90b_weight.load_param(i, weights[i]);
     end
 
