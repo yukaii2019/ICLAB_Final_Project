@@ -140,15 +140,17 @@ reg [5:0] weight_cnt_delay [0:16];
 
 
 
-wire [6:0] x_d2 = x_delay[2];
-wire [6:0] y_d2 = y_delay[2];
-
 reg [3:0] layer_cnt;
 
 reg [1:0] word_mask_det;
 
 integer i,j,k,l,m,n,o,p,q,r,s,t;
 
+
+//wire [6:0] x_d2 = x_delay[2];
+//wire [6:0] y_d2 = y_delay[2];
+//wire [1:0] test_delay = {x_delay[2][0],y_delay[2][0]};
+//wire [1:0] test = {y[0],x[0]};
 
 /* ============ output register ============= */
 
@@ -175,7 +177,6 @@ end
 /* ========================================== */
 
 
-wire [1:0] test = {y[0],x[0]};
 
 always@(*)begin
     if(state == CONV3_1 || state == CONV4_1)begin
@@ -490,7 +491,7 @@ always@(posedge clk)begin
             sum[q] <= (in_cnt == 2)? b[0] + sum_n[q] : sum[q] + sum_n[q];
         end
         for(q = 9 ; q < 27 ; q = q + 1)begin
-            sum[q] = 0;
+            sum[q] <= 0;
         end
     end
 end
@@ -520,7 +521,6 @@ always@(*)begin
     end
 end
 
-wire [1:0] test_delay = {x_delay[2][0],y_delay[2][0]};
 always@(*)begin
     if(state == CONV1)begin
         case({y_delay[2][0],x_delay[2][0]})
@@ -865,9 +865,11 @@ always@(*)begin
     end
     else if(state == CONV3_1 || state == CONV4_1)begin
         sram_raddr_bias_n = (in_x == 0 && in_y == 0 && in_cnt == 5) ? sram_raddr_bias + 1 : sram_raddr_bias;
+        bias_cnt_n = 0;
     end
     else if(state == CONV5)begin
         sram_raddr_bias_n = (in_x == 0 && in_y == 0 && in_cnt == 11) ? sram_raddr_bias + 1 : sram_raddr_bias;
+        bias_cnt_n = 0;
     end
     else begin
         sram_raddr_bias_n = sram_raddr_bias;
