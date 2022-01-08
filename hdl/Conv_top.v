@@ -56,27 +56,21 @@ localparam [4:0] WAIT_SHIFT_MEM2 = 6;
 localparam [4:0] BLANK3_1 = 7;
 localparam [4:0] CONV3_1 = 8;
 localparam [4:0] WAIT_SHIFT_MEM3_1 = 9;
-
 localparam [4:0] BLANK3 = 10;
 localparam [4:0] CONV3 = 11;
 localparam [4:0] WAIT_SHIFT_MEM3 = 12;
-
 localparam [4:0] BLANK4_1 = 13;
 localparam [4:0] CONV4_1 = 14;
 localparam [4:0] WAIT_SHIFT_MEM4_1 = 15;
-
 localparam [4:0] BLANK4_2 = 16;
 localparam [4:0] CONV4_2 = 17;
 localparam [4:0] WAIT_SHIFT_MEM4_2 = 18;
-
 localparam [4:0] BLANK4 = 19;
 localparam [4:0] CONV4 = 20;
 localparam [4:0] WAIT_SHIFT_MEM4 = 21;
-
 localparam [4:0] BLANK5 = 22;
 localparam [4:0] CONV5 = 23;
 localparam [4:0] WAIT_SHIFT_MEM5 = 24;
-
 localparam [4:0] FINISH = 25;
 
 
@@ -118,18 +112,17 @@ reg signed [20-1:0] mul_result[0:81-1];
 
 reg signed [25:0] sum_n [0:27-1];
 reg signed [25:0] sum [0:27-1];
+
 reg [25:0] unsigned_sum[0:27-1];
 reg [25:0] out [0:27];
 
 
-reg [6:0] in_x, in_y;
-reg [6:0] in_x_n, in_y_n;
-
-reg [6:0] x,y;
-reg [6:0] x_n,y_n;
-
-reg [6:0] x_delay[0:2];
-reg [6:0] y_delay[0:2];
+reg [4:0] in_x, in_y;
+reg [4:0] in_x_n, in_y_n;
+reg [4:0] x,y;
+reg [4:0] x_n,y_n;
+reg [4:0] x_delay[0:2];
+reg [4:0] y_delay[0:2];
 
 
 
@@ -144,7 +137,6 @@ reg [3:0] layer_cnt;
 
 reg [1:0] word_mask_det;
 
-reg [1:0] conv1_cnt, conv1_cnt_n;
 
 
 integer i,j,k,l,m,n,o,p,q,r,s,t;
@@ -374,23 +366,7 @@ always@(posedge clk)begin
 end
 
 always@(posedge clk)begin
-    if(state == BLANK || state == CONV1)begin
-        /*
-        if(bias_cnt == 1)begin
-            b[0] <= {sram_rdata_bias, 8'd0};
-        end
-        else if (bias_cnt == 2)begin
-            b[1] <= {sram_rdata_bias, 8'd0};
-        end
-        else begin
-            b[2] <= {sram_rdata_bias, 8'd0};
-        end
-        */
-        b[0] <= {sram_rdata_bias,8'd0};
-    end
-    else begin
-        b[0] <= {sram_rdata_bias,8'd0};
-    end
+    b[0] <= {sram_rdata_bias,8'd0};
 end
 
 always@(*)begin
@@ -420,23 +396,6 @@ always@(*)begin
         for (m = 27; m < 81 ; m = m + 1)begin
             mul_result_n[m] = 0;
         end
-        /*
-        for(m = 0 ; m < 9 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3 + n + 0] = f[9*(n+1)-m-1] * w[n+6];
-            end
-        end
-        for(m = 0 ; m < 9 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3 + n + 27] = f[9*(n+1)-m-1] * w[n+3];
-            end
-        end
-        for(m = 0 ; m < 9 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3 + n + 54] = f[9*(n+1)-m-1] * w[n];
-            end
-        end
-        */
     end
     else begin
         for(m = 0 ; m < 3 ; m = m + 1)begin
@@ -495,13 +454,6 @@ end
 
 always@(*)begin
     if(state == CONV1)begin
-        /*
-        for(s = 0 ; s < 3 ; s = s + 1)begin
-            for(p = 0 ; p < 9; p = p + 1)begin
-                sum_n[p+s*9] = mul_result[p*3 + s*27 + 0] + mul_result[p*3 + s*27 + 1] + mul_result[p*3 + s*27 + 2] + b[s]; 
-            end
-        end
-        */
         for(p = 0 ; p < 9; p = p + 1)begin
             sum_n[p] = mul_result[p*3 + 0] + mul_result[p*3 + 1] + mul_result[p*3 + 2] + b[0]; 
         end
@@ -541,34 +493,15 @@ always@(*)begin
     for(r = 0 ; r < 27 ; r = r + 1)begin
         out[r] = unsigned_sum[r] + 8'b1000_0000;
     end
-    if(state == CONV1)begin
-        /*
-        for(r = 0 ; r < 27 ; r = r + 1)begin
-            sram_wdata_n[(26-r)*10 +: 10] = out[r][8+:10];
-        end
-        */
-        for(r = 0 ; r < 9 ;r = r + 1)begin
-            sram_wdata_n[((8-r)+18)*10 +: 10] = out[r][8+:10];
-        end
-        for(r = 0 ; r < 9 ;r = r + 1)begin
-            sram_wdata_n[((8-r)+9)*10 +: 10] = out[r][8+:10];
-        end
-        for(r = 0 ; r < 9 ;r = r + 1)begin
-            sram_wdata_n[((8-r))*10 +: 10] = out[r][8+:10];
-        end
 
-
+    for(r = 0 ; r < 9 ;r = r + 1)begin
+        sram_wdata_n[((8-r)+18)*10 +: 10] = out[r][8+:10];
     end
-    else begin
-        for(r = 0 ; r < 9 ;r = r + 1)begin
-            sram_wdata_n[((8-r)+18)*10 +: 10] = out[r][8+:10];
-        end
-        for(r = 0 ; r < 9 ;r = r + 1)begin
-            sram_wdata_n[((8-r)+9)*10 +: 10] = out[r][8+:10];
-        end
-        for(r = 0 ; r < 9 ;r = r + 1)begin
-            sram_wdata_n[((8-r))*10 +: 10] = out[r][8+:10];
-        end
+    for(r = 0 ; r < 9 ;r = r + 1)begin
+        sram_wdata_n[((8-r)+9)*10 +: 10] = out[r][8+:10];
+    end
+    for(r = 0 ; r < 9 ;r = r + 1)begin
+        sram_wdata_n[((8-r))*10 +: 10] = out[r][8+:10];
     end
 end
 
@@ -578,41 +511,6 @@ always@(*)begin
         sram_wen_1_n = ~(x_delay[2][0]==1 & y_delay[2][0]==0);
         sram_wen_2_n = ~(x_delay[2][0]==0 & y_delay[2][0]==1);
         sram_wen_3_n = ~(x_delay[2][0]==1 & y_delay[2][0]==1);        
-        
-        /*
-        case({y_delay[2][0],x_delay[2][0]})
-            2'b00:begin
-                sram_wen_0_n = 0;
-                sram_wen_1_n = 1;
-                sram_wen_2_n = 1;
-                sram_wen_3_n = 1;
-            end
-            2'b01:begin
-                sram_wen_0_n = 1;
-                sram_wen_1_n = 0;
-                sram_wen_2_n = 1;
-                sram_wen_3_n = 1;
-            end
-            2'b10:begin
-                sram_wen_0_n = 1;
-                sram_wen_1_n = 1;
-                sram_wen_2_n = 0;
-                sram_wen_3_n = 1;
-            end
-            2'b11:begin
-                sram_wen_0_n = 1;
-                sram_wen_1_n = 1;
-                sram_wen_2_n = 1;
-                sram_wen_3_n = 0;
-            end
-            default:begin
-                sram_wen_0_n = 1;
-                sram_wen_1_n = 1;
-                sram_wen_2_n = 1;
-                sram_wen_3_n = 1;
-            end
-        endcase
-        */
     end
     else begin
         sram_wen_0_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==0) : 1;
@@ -629,66 +527,58 @@ always@(*)begin
             word_mask_det = weight_cnt_delay[4];
         end
         CONV2:begin
-            word_mask_det = weight_cnt_delay[4]      -3;
+            word_mask_det = weight_cnt_delay[4]-3;
         end
         CONV3_1:begin
-            word_mask_det = weight_cnt_delay[7]-3    -3; 
+            word_mask_det = weight_cnt_delay[7]-6; 
         end
         CONV3:begin
-            word_mask_det = weight_cnt_delay[4]-6    -3;
+            word_mask_det = weight_cnt_delay[4]-9;
         end
         CONV4_1:begin
-            word_mask_det = weight_cnt_delay[7]-9    -3;
+            word_mask_det = weight_cnt_delay[7]-12;
         end
         CONV4_2:begin
-            word_mask_det = weight_cnt_delay[4]-12   -3;
+            word_mask_det = weight_cnt_delay[4]-15;
         end
         CONV4:begin
-            word_mask_det = weight_cnt_delay[4]-15   -3;
+            word_mask_det = weight_cnt_delay[4]-18;
         end
         default:begin
-            word_mask_det = weight_cnt_delay[13]-18  -3;
+            word_mask_det = weight_cnt_delay[13]-21;
         end
     endcase
 end
 
 
 always@(*)begin
-    /*
-    if(state == CONV1)begin
-        sram_wordmask_n = 27'd0;
-    end
-    //else if (state == CONV2)begin
-    else begin
-    */
-        sram_wordmask_n[ 0] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 1] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 2] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 3] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 4] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 5] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 6] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 7] = ~(word_mask_det==2); 
-        sram_wordmask_n[ 8] = ~(word_mask_det==2);      
-        sram_wordmask_n[ 9] = ~(word_mask_det==1); 
-        sram_wordmask_n[10] = ~(word_mask_det==1); 
-        sram_wordmask_n[11] = ~(word_mask_det==1); 
-        sram_wordmask_n[12] = ~(word_mask_det==1); 
-        sram_wordmask_n[13] = ~(word_mask_det==1); 
-        sram_wordmask_n[14] = ~(word_mask_det==1); 
-        sram_wordmask_n[15] = ~(word_mask_det==1); 
-        sram_wordmask_n[16] = ~(word_mask_det==1); 
-        sram_wordmask_n[17] = ~(word_mask_det==1);       
-        sram_wordmask_n[18] = ~(word_mask_det==0); 
-        sram_wordmask_n[19] = ~(word_mask_det==0); 
-        sram_wordmask_n[20] = ~(word_mask_det==0); 
-        sram_wordmask_n[21] = ~(word_mask_det==0); 
-        sram_wordmask_n[22] = ~(word_mask_det==0); 
-        sram_wordmask_n[23] = ~(word_mask_det==0); 
-        sram_wordmask_n[24] = ~(word_mask_det==0); 
-        sram_wordmask_n[25] = ~(word_mask_det==0); 
-        sram_wordmask_n[26] = ~(word_mask_det==0); 
-    //end
+    sram_wordmask_n[ 0] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 1] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 2] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 3] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 4] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 5] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 6] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 7] = ~(word_mask_det==2); 
+    sram_wordmask_n[ 8] = ~(word_mask_det==2);      
+    sram_wordmask_n[ 9] = ~(word_mask_det==1); 
+    sram_wordmask_n[10] = ~(word_mask_det==1); 
+    sram_wordmask_n[11] = ~(word_mask_det==1); 
+    sram_wordmask_n[12] = ~(word_mask_det==1); 
+    sram_wordmask_n[13] = ~(word_mask_det==1); 
+    sram_wordmask_n[14] = ~(word_mask_det==1); 
+    sram_wordmask_n[15] = ~(word_mask_det==1); 
+    sram_wordmask_n[16] = ~(word_mask_det==1); 
+    sram_wordmask_n[17] = ~(word_mask_det==1);       
+    sram_wordmask_n[18] = ~(word_mask_det==0); 
+    sram_wordmask_n[19] = ~(word_mask_det==0); 
+    sram_wordmask_n[20] = ~(word_mask_det==0); 
+    sram_wordmask_n[21] = ~(word_mask_det==0); 
+    sram_wordmask_n[22] = ~(word_mask_det==0); 
+    sram_wordmask_n[23] = ~(word_mask_det==0); 
+    sram_wordmask_n[24] = ~(word_mask_det==0); 
+    sram_wordmask_n[25] = ~(word_mask_det==0); 
+    sram_wordmask_n[26] = ~(word_mask_det==0); 
 end
 
 
@@ -696,7 +586,6 @@ always@(*)begin
     if(state == IDLE)begin
         weight_cnt_n = 0;
     end
-    //else if(state == CONV2 || state == CONV3_1 || state == CONV3 || state == CONV4_1 || state == CONV4_2 || state == CONV4 || state == CONV5)begin
     else if(state == CONV1 || state == CONV2 || state == CONV3_1 || state == CONV3 || state == CONV4_1 || state == CONV4_2 || state == CONV4 || state == CONV5)begin
         weight_cnt_n = (in_x == 19 && in_y == 15 && in_cnt == 0)? weight_cnt + 1 : weight_cnt;
     end
@@ -708,96 +597,96 @@ end
 
 
 always@(*)begin
-    sram_waddr_n = x_delay[2][6:1] + y_delay[2][6:1]*10;
+    sram_waddr_n = x_delay[2][4:1] + y_delay[2][4:1]*10;
 end
 
 
 always@(*)begin
     if(state == IDLE || state == BLANK || state == CONV1)begin
-        sram_raddr_0_n = in_x[6:1] + in_y[6:1]*10;
-        sram_raddr_1_n = in_x[6:1] + in_y[6:1]*10;
-        sram_raddr_2_n = in_x[6:1] + in_y[6:1]*10;
-        sram_raddr_3_n = in_x[6:1] + in_y[6:1]*10;
+        sram_raddr_0_n = in_x[4:1] + in_y[4:1]*10;
+        sram_raddr_1_n = in_x[4:1] + in_y[4:1]*10;
+        sram_raddr_2_n = in_x[4:1] + in_y[4:1]*10;
+        sram_raddr_3_n = in_x[4:1] + in_y[4:1]*10;
     end
     else if (state == BLANK2 || state == CONV2) begin
-        sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 80;
-        sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 80;
-        sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 80;
-        sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 80;
+        sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 80;
+        sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 80;
+        sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 80;
+        sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 80;
     end
     else if (state == BLANK3_1 || state == CONV3_1) begin
 
         if(in_cnt == 1 || in_cnt == 2 || in_cnt == 3)begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 160;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 160;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 160;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 160;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 160;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 160;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 160;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 160;
         end
         else begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 80;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 80;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 80;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 80;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 80;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 80;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 80;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 80;
         end
     end
     else if (state == BLANK3 || state == CONV3) begin
-        sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 400;
-        sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 400;
-        sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 400;
-        sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 400;
+        sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 400;
+        sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 400;
+        sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 400;
+        sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 400;
     end
     
     else if (state == BLANK4_1 || state == CONV4_1)begin
 
         if(in_cnt == 1 || in_cnt == 2 || in_cnt == 3)begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 240;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 240;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 240;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 240;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 240;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 240;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 240;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 240;
         end
         else begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 160;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 160;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 160;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 160;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 160;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 160;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 160;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 160;
         end
     end
     else if (state == BLANK4_2 || state == CONV4_2)begin 
-        sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 320;
-        sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 320;
-        sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 320;
-        sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 320;
+        sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 320;
+        sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 320;
+        sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 320;
+        sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 320;
     end
     else if (state == BLANK4 || state == CONV4) begin
-        sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 400;
-        sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 400;
-        sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 400;
-        sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 400;
+        sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 400;
+        sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 400;
+        sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 400;
+        sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 400;
     end
     else begin
         if(in_cnt == 7 || in_cnt == 8 || in_cnt == 9)begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 320;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 320;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 320;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 320;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 320;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 320;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 320;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 320;
         end
         else if (in_cnt == 4 || in_cnt == 5 || in_cnt == 6)begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 240;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 240;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 240;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 240;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 240;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 240;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 240;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 240;
         end
         else if(in_cnt == 1 || in_cnt == 2 || in_cnt == 3)begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 160;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 160;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 160;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 160;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 160;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 160;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 160;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 160;
         end
         else begin
-            sram_raddr_0_n = in_x[6:1] + in_x[0] + (in_y[6:1] + in_y[0]) * 10 + 80;
-            sram_raddr_1_n = in_x[6:1]           + (in_y[6:1] + in_y[0]) * 10 + 80;
-            sram_raddr_2_n = in_x[6:1] + in_x[0] + (in_y[6:1]          ) * 10 + 80;
-            sram_raddr_3_n = in_x[6:1]           + (in_y[6:1]          ) * 10 + 80;
+            sram_raddr_0_n = in_x[4:1] + in_x[0] + (in_y[4:1] + in_y[0]) * 10 + 80;
+            sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 80;
+            sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 80;
+            sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 80;
         end
 
         
@@ -923,14 +812,7 @@ always@(*)begin
         sram_raddr_bias_n = (in_x == 1 && in_y == 0) ? sram_raddr_bias + 1 : sram_raddr_bias;
         bias_cnt_n = 0;
     end
-/*
-    else if(state == BLANK || state == CONV1)begin
-        sram_raddr_bias_n = (sram_raddr_bias == 2)? sram_raddr_bias : sram_raddr_bias + 1;
-        bias_cnt_n = (bias_cnt == 3)? bias_cnt : bias_cnt+1;
-    end
-*/
     else if(state == CONV2 ||  state == CONV3 || state == CONV4_2 || state == CONV4)begin
-    //else if(state == BLANK2 || state == CONV2 ||  state == CONV3 || state == CONV4_2 || state == CONV4)begin
         sram_raddr_bias_n = (in_x == 0 && in_y == 0 && in_cnt == 2) ? sram_raddr_bias + 1 : sram_raddr_bias;
         bias_cnt_n = 0;
     end
@@ -989,7 +871,6 @@ always@(posedge clk)begin
 
     valid_conv1 <= valid_conv1_n;
 
-    conv1_cnt <= conv1_cnt_n;
 end
 
 always@(*)begin
@@ -998,14 +879,6 @@ always@(*)begin
                      state == WAIT_SHIFT_MEM4_1 || state == WAIT_SHIFT_MEM4_2 || state == WAIT_SHIFT_MEM4 || state == WAIT_SHIFT_MEM5)? 1: 0;
 end
 
-always@(*)begin
-    if(state == CONV1)begin
-        conv1_cnt_n = (x_delay[2] == 19 && y_delay[2] == 15) ? conv1_cnt + 1 : conv1_cnt;
-    end
-    else begin
-        conv1_cnt_n = 0;
-    end
-end
 
 always@(posedge clk)begin
     if(~rst_n)begin
@@ -1027,12 +900,9 @@ always@(*)begin
             y_n = 0;
         end
         BLANK:begin
-            //state_n = (in_cnt == 2)? CONV1 : BLANK;
             state_n = CONV1;
             in_cnt_n = 0;
-            //in_cnt_n = (in_cnt == 2)? 0 : in_cnt + 1;
             
-            //in_x_n = (in_cnt == 1 || in_cnt == 2)? in_x + 1 : in_x;
             in_x_n = 2;
             in_y_n = 0;
             
@@ -1040,7 +910,8 @@ always@(*)begin
             y_n = 0;            
         end
         CONV1:begin
-            state_n = (x_delay[2] == 19 && y_delay[2] == 15 && conv1_cnt == 2) ? WAIT_SHIFT_MEM : CONV1;
+            state_n = (x_delay[2] == 19 && y_delay[2] == 15 && weight_cnt_delay[4] == 2) ? WAIT_SHIFT_MEM : CONV1;
+
             in_cnt_n = 0;
 
             in_x_n = (in_x == 19) ? 0 : in_x + 1;
