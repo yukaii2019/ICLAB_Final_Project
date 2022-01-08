@@ -110,11 +110,11 @@ reg [270-1:0] in;
 reg signed [20-1:0] mul_result_n[0:81-1];
 reg signed [20-1:0] mul_result[0:81-1];
 
-reg signed [25:0] sum_n [0:9-1];
-reg signed [25:0] sum [0:9-1];
+reg signed [24:0] sum_n [0:9-1];
+reg signed [24:0] sum [0:9-1];
 
-reg [25:0] unsigned_sum[0:9-1];
-reg [25:0] out [0:9-1];
+reg [24:0] unsigned_sum[0:9-1];
+reg [24:0] out [0:9-1];
 
 
 reg [4:0] in_x, in_y;
@@ -138,8 +138,91 @@ reg [1:0] word_mask_det;
 
 
 
-integer i,j,k,l,m,n,o,p,q,r,s,t;
+integer i,j,k,l,m,n,o,p,q,r,s,t,u,v,zz,z;
 
+
+
+wire[(BW_PER_ACT + 1 + 1 + BW_PER_WEIGHT + 2 + 2)*49 -1 :0] mm;
+reg [(BW_PER_ACT + 1 + 1) * 49 -1 : 0] aa;
+reg [(BW_PER_WEIGHT + 2 + 2) * 49 -1 : 0] bb;
+
+wire [(BW_PER_ACT + 1 + 1) * 49 -1 : 0] wino_a;
+wire [(BW_PER_WEIGHT + 2 + 2) * 49 -1 : 0] wino_b;
+
+wire signed [(BW_PER_ACT + BW_PER_WEIGHT + 4) - 1 : 0] wino_out [0:8];
+reg  signed [(BW_PER_ACT + BW_PER_WEIGHT + 4) - 1 : 0] wino_out_delay [0:8];
+
+mul49 #(
+.bit_a(BW_PER_ACT +1 +1),
+.bit_b(BW_PER_WEIGHT + 2 + 2)
+)
+
+mul49_1
+(
+.a(aa),
+.b(bb),
+.m(mm)
+);
+
+
+
+winograd_2d #(
+.bit_f(BW_PER_ACT),
+.bit_w(BW_PER_WEIGHT)
+) 
+winograd_2d_0
+(
+.f0(f[0]), 
+.f1(f[1]), 
+.f2(f[2]), 
+.f3(f[3]), 
+.f4(f[4]), 
+.f5(f[5]), 
+.f6(f[6]), 
+.f7(f[7]), 
+.f8(f[8]), 
+.f9(f[9]), 
+.f10(f[10]), 
+.f11(f[11]), 
+.f12(f[12]), 
+.f13(f[13]), 
+.f14(f[14]), 
+.f15(f[15]), 
+.f16(f[16]), 
+.f17(f[17]), 
+.f18(f[18]), 
+.f19(f[19]), 
+.f20(f[20]), 
+.f21(f[21]), 
+.f22(f[22]), 
+.f23(f[23]), 
+.f24(f[24]), 
+
+.w0(w[8]),
+.w1(w[7]),
+.w2(w[6]),
+.w3(w[5]),
+.w4(w[4]),
+.w5(w[3]),
+.w6(w[2]),
+.w7(w[1]),
+.w8(w[0]),
+
+.mm(mm),
+.aa(wino_a),
+.bb(wino_b),
+
+.out0(wino_out[0]),
+.out1(wino_out[1]),
+.out2(wino_out[2]),
+.out3(wino_out[3]),
+.out4(wino_out[4]),
+.out5(wino_out[5]),
+.out6(wino_out[6]),
+.out7(wino_out[7]),
+.out8(wino_out[8])
+
+);
 
 //wire [6:0] x_d2 = x_delay[2];
 //wire [6:0] y_d2 = y_delay[2];
@@ -370,7 +453,55 @@ end
 
 
 
+always@(*)begin
+    if(state == CONV1)begin
+        if(weight_cnt_delay[2] == 0)begin
+            for(u = 0 ; u < 9 ; u = u + 1)begin
+                for(v = 0 ; v < 3 ; v = v + 1)begin
+                    aa[(BW_PER_ACT + 1 + 1)*(u*3 + v) +: (BW_PER_ACT + 1 + 1) ] = {{2{f[9*(v+1)-u-1][9]}}, f[9*(v+1)-u-1]};
+                    bb[(BW_PER_WEIGHT + 2 + 2)*(u*3 + v) +: (BW_PER_WEIGHT + 2 + 2)] = {{4{w[v+6][9]}}, w[v+6]};
+                end
+            end
+        end
+        else if (weight_cnt_delay[2] == 1)begin
+            for(u = 0 ; u < 9 ; u = u + 1)begin
+                for(v = 0 ; v < 3 ; v = v + 1)begin
+                    aa[(BW_PER_ACT + 1 + 1)*(u*3 + v) +: (BW_PER_ACT + 1 + 1) ] = {{2{f[9*(v+1)-u-1][9]}}, f[9*(v+1)-u-1]};
+                    bb[(BW_PER_WEIGHT + 2 + 2)*(u*3 + v) +: (BW_PER_WEIGHT + 2 + 2)] = {{4{w[v+3][9]}}, w[v+3]};
+                end
+            end
+        end
+        else begin
+            for(u = 0 ; u < 9 ; u = u + 1)begin
+                for(v = 0 ; v < 3 ; v = v + 1)begin
+                    aa[(BW_PER_ACT + 1 + 1)*(u*3 + v) +: (BW_PER_ACT + 1 + 1) ] = {{2{f[9*(v+1)-u-1][9]}}, f[9*(v+1)-u-1]};
+                    bb[(BW_PER_WEIGHT + 2 + 2)*(u*3 + v) +: (BW_PER_WEIGHT + 2 + 2)] = {{4{w[v][9]}}, w[v]};
+                end
+            end
+        end
 
+        for(u = 27 ; u < 49 ; u = u + 1)begin        
+            aa[(BW_PER_ACT + 1 + 1)*u +: (BW_PER_ACT + 1 + 1) ] = 0;
+            bb[(BW_PER_WEIGHT + 2 + 2)*u +: (BW_PER_WEIGHT + 2 + 2)] = 0;
+        end
+    end
+    else begin
+        aa = wino_a;
+        bb = wino_b;
+        /*
+        for(zz = 0 ; zz < 3 ; zz = zz + 1)begin
+            for(z = 0 ; z < 3 ; z = z + 1)begin
+                for(u = 0 ; u < 3 ; u = u + 1)begin
+                    for(v = 0 ; v < 3 ; v = v + 1)begin
+                        aa[(BW_PER_ACT + 1 + 1)*(zz*27 + z*9 + u*3 + v) +: (BW_PER_ACT + 1 + 1) ] = {{2{f[(u+zz)*5+(v+z)][9]}}, f[(u+zz)*5+(v+z)]};
+                        bb[(BW_PER_WEIGHT + 2 + 2)*(zz*27 + z*9 + u*3 + v) +: (BW_PER_WEIGHT + 2 + 2)] = {{4{w[8-(u*3+v)][9]}}, w[8-(u*3+v)]};
+                    end
+                end
+            end
+        end
+        */
+    end
+end
 
 
 
@@ -378,6 +509,12 @@ end
 
 always@(*)begin
     if(state == CONV1)begin
+        for(m = 0 ; m < 9 ; m = m + 1)begin
+            for(n = 0 ; n < 3 ; n = n + 1)begin
+                mul_result_n[m*3 + n] = mm[(BW_PER_ACT + 1 + 1 + BW_PER_WEIGHT + 2 + 2) * (m*3+n) +: 20];
+            end
+        end
+        /*
         if (weight_cnt_delay[2] == 0)begin
             for(m = 0 ; m < 9 ; m = m + 1)begin
                 for(n = 0 ; n < 3 ; n = n + 1)begin
@@ -399,12 +536,15 @@ always@(*)begin
                 end
             end
         end
-
+        */
         for (m = 27; m < 81 ; m = m + 1)begin
             mul_result_n[m] = 0;
         end
+        
     end
     else begin
+
+        /*
         for(m = 0 ; m < 3 ; m = m + 1)begin
             for(n = 0 ; n < 3 ; n = n + 1)begin
                 mul_result_n[m*3+n + 0] = f[m*5+n] * w[8-(m*3+n)];
@@ -450,11 +590,23 @@ always@(*)begin
                 mul_result_n[m*3+n + 72] = f[(m+2)*5+n+2] * w[8-(m*3+n)];
             end
         end
+        */
     end
 end
 
 
 
+always@(posedge clk)begin
+    wino_out_delay[0] <= wino_out[0];
+    wino_out_delay[1] <= wino_out[1];
+    wino_out_delay[2] <= wino_out[2];
+    wino_out_delay[3] <= wino_out[3];
+    wino_out_delay[4] <= wino_out[4];
+    wino_out_delay[5] <= wino_out[5];
+    wino_out_delay[6] <= wino_out[6];
+    wino_out_delay[7] <= wino_out[7];
+    wino_out_delay[8] <= wino_out[8];
+end
 
 
 
@@ -483,9 +635,12 @@ always@(*)begin
     end
     else begin
         for(s = 0 ; s < 9 ; s = s + 1)begin
+            /*
             sum_n[s] = mul_result[s*9 + 0] + mul_result[s*9 + 1] + mul_result[s*9 + 2] + 
                        mul_result[s*9 + 3] + mul_result[s*9 + 4] + mul_result[s*9 + 5] + 
                        mul_result[s*9 + 6] + mul_result[s*9 + 7] + mul_result[s*9 + 8];
+             */
+            sum_n[s] = wino_out_delay[s];
         end
     end
 end
