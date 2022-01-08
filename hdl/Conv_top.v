@@ -107,8 +107,8 @@ reg signed [17:0] b [0:2];
 
 reg [270-1:0] in;
 
-reg signed [20-1:0] mul_result_n[0:81-1];
-reg signed [20-1:0] mul_result[0:81-1];
+reg signed [20-1:0] mul_result_n[0:27-1];
+reg signed [20-1:0] mul_result[0:27-1];
 
 reg signed [24:0] sum_n [0:9-1];
 reg signed [24:0] sum [0:9-1];
@@ -138,7 +138,7 @@ reg [1:0] word_mask_det;
 
 
 
-integer i,j,k,l,m,n,o,p,q,r,s,t,u,v,zz,z;
+integer i,j,k,l,m,n,o,p,q,r,u,v;
 
 
 
@@ -150,7 +150,6 @@ wire [(BW_PER_ACT + 1 + 1) * 49 -1 : 0] wino_a;
 wire [(BW_PER_WEIGHT + 2 + 2) * 49 -1 : 0] wino_b;
 
 wire signed [(BW_PER_ACT + BW_PER_WEIGHT + 4) - 1 : 0] wino_out [0:8];
-reg  signed [(BW_PER_ACT + BW_PER_WEIGHT + 4) - 1 : 0] wino_out_delay [0:8];
 
 mul49 #(
 .bit_a(BW_PER_ACT +1 +1),
@@ -172,42 +171,43 @@ winograd_2d #(
 ) 
 winograd_2d_0
 (
-.f0(f[0]), 
-.f1(f[1]), 
-.f2(f[2]), 
-.f3(f[3]), 
-.f4(f[4]), 
-.f5(f[5]), 
-.f6(f[6]), 
-.f7(f[7]), 
-.f8(f[8]), 
-.f9(f[9]), 
-.f10(f[10]), 
-.f11(f[11]), 
-.f12(f[12]), 
-.f13(f[13]), 
-.f14(f[14]), 
-.f15(f[15]), 
-.f16(f[16]), 
-.f17(f[17]), 
-.f18(f[18]), 
-.f19(f[19]), 
-.f20(f[20]), 
-.f21(f[21]), 
-.f22(f[22]), 
-.f23(f[23]), 
-.f24(f[24]), 
+.f0 (f_n[0]), 
+.f1 (f_n[1]), 
+.f2 (f_n[2]), 
+.f3 (f_n[3]), 
+.f4 (f_n[4]), 
+.f5 (f_n[5]), 
+.f6 (f_n[6]), 
+.f7 (f_n[7]), 
+.f8 (f_n[8]), 
+.f9 (f_n[9]), 
+.f10(f_n[10]), 
+.f11(f_n[11]), 
+.f12(f_n[12]), 
+.f13(f_n[13]), 
+.f14(f_n[14]), 
+.f15(f_n[15]), 
+.f16(f_n[16]), 
+.f17(f_n[17]), 
+.f18(f_n[18]), 
+.f19(f_n[19]), 
+.f20(f_n[20]), 
+.f21(f_n[21]),                                                                                                                                                                                   
+.f22(f_n[22]), 
+.f23(f_n[23]), 
+.f24(f_n[24]), 
 
-.w0(w[8]),
-.w1(w[7]),
-.w2(w[6]),
-.w3(w[5]),
-.w4(w[4]),
-.w5(w[3]),
-.w6(w[2]),
-.w7(w[1]),
-.w8(w[0]),
+.w0(w_n[8]),
+.w1(w_n[7]),
+.w2(w_n[6]),
+.w3(w_n[5]),
+.w4(w_n[4]),
+.w5(w_n[3]),
+.w6(w_n[2]),
+.w7(w_n[1]),
+.w8(w_n[0]),
 
+.clk(clk),
 .mm(mm),
 .aa(wino_a),
 .bb(wino_b),
@@ -412,10 +412,8 @@ always@(*)begin
         end
     end
     else begin
-        for(i = 0 ; i < 5 ; i = i + 1)begin
-            for(t = 0 ; t < 5 ; t = t + 1)begin
-                f_n[i*5+t] = in[(i*5+t)*10 +: 10];
-            end
+        for(i = 0 ; i < 25 ; i = i + 1)begin
+            f_n[i] = in[i*10 +: 10];
         end
         f_n[25] = 0;
         f_n[26] = 0;
@@ -429,15 +427,8 @@ always@(posedge clk)begin
 end
 
 always@(*)begin
-    if(state == CONV1)begin
-        for(k = 0 ; k<9 ; k = k + 1)begin
-            w_n[k] = sram_rdata_weight[k*10 +: 10];
-        end
-    end
-    else begin
-        for(k = 0 ; k < 9 ; k = k + 1)begin
-            w_n[k] = sram_rdata_weight[k*10 +: 10];
-        end
+    for(k = 0 ; k < 9 ; k = k + 1)begin
+        w_n[k] = sram_rdata_weight[k*10 +: 10];
     end
 end
 
@@ -488,144 +479,25 @@ always@(*)begin
     else begin
         aa = wino_a;
         bb = wino_b;
-        /*
-        for(zz = 0 ; zz < 3 ; zz = zz + 1)begin
-            for(z = 0 ; z < 3 ; z = z + 1)begin
-                for(u = 0 ; u < 3 ; u = u + 1)begin
-                    for(v = 0 ; v < 3 ; v = v + 1)begin
-                        aa[(BW_PER_ACT + 1 + 1)*(zz*27 + z*9 + u*3 + v) +: (BW_PER_ACT + 1 + 1) ] = {{2{f[(u+zz)*5+(v+z)][9]}}, f[(u+zz)*5+(v+z)]};
-                        bb[(BW_PER_WEIGHT + 2 + 2)*(zz*27 + z*9 + u*3 + v) +: (BW_PER_WEIGHT + 2 + 2)] = {{4{w[8-(u*3+v)][9]}}, w[8-(u*3+v)]};
-                    end
-                end
-            end
-        end
-        */
     end
 end
-
-
-
 
 
 always@(*)begin
-    if(state == CONV1)begin
-        for(m = 0 ; m < 9 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3 + n] = mm[(BW_PER_ACT + 1 + 1 + BW_PER_WEIGHT + 2 + 2) * (m*3+n) +: 20];
-            end
+    for(m = 0 ; m < 9 ; m = m + 1)begin
+        for(n = 0 ; n < 3 ; n = n + 1)begin
+            mul_result_n[m*3 + n] = mm[(BW_PER_ACT + 1 + 1 + BW_PER_WEIGHT + 2 + 2) * (m*3+n) +: 20];
         end
-        /*
-        if (weight_cnt_delay[2] == 0)begin
-            for(m = 0 ; m < 9 ; m = m + 1)begin
-                for(n = 0 ; n < 3 ; n = n + 1)begin
-                    mul_result_n[m*3 + n] = f[9*(n+1)-m-1] * w[n+6];
-                end
-            end
-        end
-        else if (weight_cnt_delay[2] == 1)begin
-            for(m = 0 ; m < 9 ; m = m + 1)begin
-                for(n = 0 ; n < 3 ; n = n + 1)begin
-                    mul_result_n[m*3 + n] = f[9*(n+1)-m-1] * w[n+3];
-                end
-            end
-        end
-        else begin
-            for(m = 0 ; m < 9 ; m = m + 1)begin
-                for(n = 0 ; n < 3 ; n = n + 1)begin
-                    mul_result_n[m*3 + n] = f[9*(n+1)-m-1] * w[n];
-                end
-            end
-        end
-        */
-        for (m = 27; m < 81 ; m = m + 1)begin
-            mul_result_n[m] = 0;
-        end
-        
     end
-    else begin
-
-        /*
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 0] = f[m*5+n] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 9] = f[m*5+n+1] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 18] = f[m*5+n+2] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 27] = f[(m+1)*5+n] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 36] = f[(m+1)*5+n+1] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 45] = f[(m+1)*5+n+2] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 54] = f[(m+2)*5+n] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 63] = f[(m+2)*5+n+1] * w[8-(m*3+n)];
-            end
-        end
-        for(m = 0 ; m < 3 ; m = m + 1)begin
-            for(n = 0 ; n < 3 ; n = n + 1)begin
-                mul_result_n[m*3+n + 72] = f[(m+2)*5+n+2] * w[8-(m*3+n)];
-            end
-        end
-        */
-    end
-end
-
+ end
 
 
 always@(posedge clk)begin
-    wino_out_delay[0] <= wino_out[0];
-    wino_out_delay[1] <= wino_out[1];
-    wino_out_delay[2] <= wino_out[2];
-    wino_out_delay[3] <= wino_out[3];
-    wino_out_delay[4] <= wino_out[4];
-    wino_out_delay[5] <= wino_out[5];
-    wino_out_delay[6] <= wino_out[6];
-    wino_out_delay[7] <= wino_out[7];
-    wino_out_delay[8] <= wino_out[8];
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-always@(posedge clk)begin
-    for(o = 0; o < 81 ; o = o + 1)begin
+    for(o = 0; o < 27 ; o = o + 1)begin
         mul_result[o] <= mul_result_n[o];
     end
 end
+
 
 always@(*)begin
     if(state == CONV1)begin
@@ -634,16 +506,12 @@ always@(*)begin
         end
     end
     else begin
-        for(s = 0 ; s < 9 ; s = s + 1)begin
-            /*
-            sum_n[s] = mul_result[s*9 + 0] + mul_result[s*9 + 1] + mul_result[s*9 + 2] + 
-                       mul_result[s*9 + 3] + mul_result[s*9 + 4] + mul_result[s*9 + 5] + 
-                       mul_result[s*9 + 6] + mul_result[s*9 + 7] + mul_result[s*9 + 8];
-             */
-            sum_n[s] = wino_out_delay[s];
+        for(p = 0 ; p < 9 ; p = p + 1)begin
+            sum_n[p] = wino_out[p];
         end
     end
 end
+
 
 always@(posedge clk)begin
     if(state == CONV1)begin
@@ -657,6 +525,7 @@ always@(posedge clk)begin
         end
     end
 end
+
 
 always@(*)begin
     for(r = 0 ; r < 9 ; r = r + 1)begin
@@ -690,6 +559,7 @@ always@(*)begin
         sram_wen_1_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==0) : 1;
         sram_wen_2_n = (in_cnt == 2) ? ~(x_delay[2][0]==0 & y_delay[2][0]==1) : 1;
         sram_wen_3_n = (in_cnt == 2) ? ~(x_delay[2][0]==1 & y_delay[2][0]==1) : 1;        
+        
     end
 end
 
@@ -721,7 +591,6 @@ always@(*)begin
             word_mask_det = weight_cnt_delay[13];
         end
     endcase
-
 end
 
 
@@ -861,9 +730,7 @@ always@(*)begin
             sram_raddr_1_n = in_x[4:1]           + (in_y[4:1] + in_y[0]) * 10 + 80;
             sram_raddr_2_n = in_x[4:1] + in_x[0] + (in_y[4:1]          ) * 10 + 80;
             sram_raddr_3_n = in_x[4:1]           + (in_y[4:1]          ) * 10 + 80;
-        end
-
-        
+        end 
     end
 end
 
@@ -1389,9 +1256,10 @@ input signed [bit_w-1 : 0] w6,
 input signed [bit_w-1 : 0] w7,
 input signed [bit_w-1 : 0] w8,
 
+input clk,
 input  [(bit_f + 1 + 1 + bit_w + 2 + 2)*49 -1 :0] mm,
-output [(bit_f + 1 + 1) * 49 -1 : 0] aa,
-output [(bit_w + 2 + 2) * 49 -1 : 0] bb,
+output reg [(bit_f + 1 + 1) * 49 -1 : 0] aa,
+output reg [(bit_w + 2 + 2) * 49 -1 : 0] bb,
 
 
 output signed [(bit_f + bit_w + 4) - 1 : 0] out0,
@@ -1508,6 +1376,11 @@ assign b6[2] = w8;
 wire [(bit_d + 1)*7 -1 : 0] aaa [0:6];
 wire [(bit_g + 2)*7 -1 : 0] bbb [0:6];
 wire [(bit_d + 1 + bit_g + 2)*7 -1 :0] mmm[0:6];
+
+reg  [(bit_f + 1 + 1 + bit_w + 2 + 2)*49 -1 :0] mm_d;
+wire [(bit_f + 1 + 1) * 49 -1 : 0] aa_n;
+wire [(bit_w + 2 + 2) * 49 -1 : 0] bb_n;
+
 
 winograd_1d #( 
 .bit_d(bit_d),
@@ -1688,15 +1561,30 @@ winograd_1d_6
 .out2(m6[2])
 );
 
-assign aa = {aaa[6], aaa[5], aaa[4], aaa[3], aaa[2], aaa[1], aaa[0]};
-assign bb = {bbb[6], bbb[5], bbb[4], bbb[3], bbb[2], bbb[1], bbb[0]};
-assign mmm[0] = mm[(bit_d + 1 + bit_g + 2)*7 * 0 +: (bit_d + 1 + bit_g + 2)*7];
-assign mmm[1] = mm[(bit_d + 1 + bit_g + 2)*7 * 1 +: (bit_d + 1 + bit_g + 2)*7];
-assign mmm[2] = mm[(bit_d + 1 + bit_g + 2)*7 * 2 +: (bit_d + 1 + bit_g + 2)*7];
-assign mmm[3] = mm[(bit_d + 1 + bit_g + 2)*7 * 3 +: (bit_d + 1 + bit_g + 2)*7];
-assign mmm[4] = mm[(bit_d + 1 + bit_g + 2)*7 * 4 +: (bit_d + 1 + bit_g + 2)*7];
-assign mmm[5] = mm[(bit_d + 1 + bit_g + 2)*7 * 5 +: (bit_d + 1 + bit_g + 2)*7];
-assign mmm[6] = mm[(bit_d + 1 + bit_g + 2)*7 * 6 +: (bit_d + 1 + bit_g + 2)*7];
+
+assign aa_n = {aaa[6], aaa[5], aaa[4], aaa[3], aaa[2], aaa[1], aaa[0]};
+assign bb_n = {bbb[6], bbb[5], bbb[4], bbb[3], bbb[2], bbb[1], bbb[0]};
+
+always@(posedge clk)begin
+    aa <= aa_n;
+    bb <= bb_n;
+end
+
+//assign aa = {aaa[6], aaa[5], aaa[4], aaa[3], aaa[2], aaa[1], aaa[0]};
+//assign bb = {bbb[6], bbb[5], bbb[4], bbb[3], bbb[2], bbb[1], bbb[0]};
+
+always@(posedge clk)begin
+    mm_d <= mm;
+end
+
+
+assign mmm[0] = mm_d[(bit_d + 1 + bit_g + 2)*7 * 0 +: (bit_d + 1 + bit_g + 2)*7];
+assign mmm[1] = mm_d[(bit_d + 1 + bit_g + 2)*7 * 1 +: (bit_d + 1 + bit_g + 2)*7];
+assign mmm[2] = mm_d[(bit_d + 1 + bit_g + 2)*7 * 2 +: (bit_d + 1 + bit_g + 2)*7];
+assign mmm[3] = mm_d[(bit_d + 1 + bit_g + 2)*7 * 3 +: (bit_d + 1 + bit_g + 2)*7];
+assign mmm[4] = mm_d[(bit_d + 1 + bit_g + 2)*7 * 4 +: (bit_d + 1 + bit_g + 2)*7];
+assign mmm[5] = mm_d[(bit_d + 1 + bit_g + 2)*7 * 5 +: (bit_d + 1 + bit_g + 2)*7];
+assign mmm[6] = mm_d[(bit_d + 1 + bit_g + 2)*7 * 6 +: (bit_d + 1 + bit_g + 2)*7];
 
 
 wire signed [(bit_f + 1 + bit_w + 2 + 2) - 1 + 1 : 0] m0_ [0:2];
@@ -1716,12 +1604,25 @@ wire signed [(bit_f + 1 + bit_w + 2 + 2) -1 + 1 + 2 : 0] out3_tmp;
 wire signed [(bit_f + 1 + bit_w + 2 + 2) -1 + 1 + 2 : 0] out4_tmp;
 wire signed [(bit_f + 1 + bit_w + 2 + 2) -1 + 1 + 2 : 0] out5_tmp;
 
-assign out0_tmp = m0_[0] + m1[0] + m2[0];
+
+assign out0_tmp = m0_[0] + {{1{m1[0][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m1[0]} + {{1{m2[0][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m2[0]} ;
+assign out1_tmp = m0_[1] + {{1{m1[1][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m1[1]} + {{1{m2[1][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m2[1]} ;
+assign out2_tmp = m0_[2] + {{1{m1[2][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m1[2]} + {{1{m2[2][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m2[2]} ;
+
+assign out3_tmp = {{1{m1[0][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m1[0]} - {{1{m2[0][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m2[0]} - m3_[0] ;
+assign out4_tmp = {{1{m1[1][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m1[1]} - {{1{m2[1][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m2[1]} - m3_[1] ;
+assign out5_tmp = {{1{m1[2][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m1[2]} - {{1{m2[2][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m2[2]} - m3_[2] ;
+
+
+/*
+assign out0_tmp = m0_[0] + {{1{m1[0][(bit_f + 1 + bit_w + 2 + 2) - 1]}},m1[0]} + m2[0];
 assign out1_tmp = m0_[1] + m1[1] + m2[1];
 assign out2_tmp = m0_[2] + m1[2] + m2[2];
 assign out3_tmp = m1[0] - m2[0] - m3_[0];
 assign out4_tmp = m1[1] - m2[1] - m3_[1];
 assign out5_tmp = m1[2] - m2[2] - m3_[2];
+*/
+
 
 assign out0 = out0_tmp[(bit_f + 1 + bit_w + 2 + 2) -1 + 1 + 2 : 1];
 assign out1 = out1_tmp[(bit_f + 1 + bit_w + 2 + 2) -1 + 1 + 2 : 1];
@@ -1830,14 +1731,17 @@ assign m3_ = {m3,1'b0};
 wire signed [(bit_d + 1 + bit_g + 2) -1 + 1 + 2 : 0] tmp_out0;
 wire signed [(bit_d + 1 + bit_g + 2) -1 + 1 + 2 : 0] tmp_out1;
 
-assign tmp_out0 = m0_ + m1 + m2;
-assign tmp_out1 = m1  - m2 - m3_;
+assign tmp_out0 = m0_ + {{1{m1[(bit_d + 1 + bit_g + 2) -1]}},m1} + {{1{m2[(bit_d + 1 + bit_g + 2) -1]}},m2};
+assign tmp_out1 = {{1{m1[(bit_d + 1 + bit_g + 2) -1]}},m1} - {{1{m2[(bit_d + 1 + bit_g + 2) -1]}},m2} - m3_;
 
 assign out0 = tmp_out0[(bit_d + 1 + bit_g + 2) -1 + 1 + 2 : 1];
 assign out1 = tmp_out1[(bit_d + 1 + bit_g + 2) -1 + 1 + 2 : 1];
 assign out2 = m4 + m5 + m6;
 
 endmodule
+
+
+
 
 module mul49 #(
 parameter bit_a = 10,
@@ -1851,15 +1755,15 @@ output [(bit_a+bit_b)*49-1:0]m
 
 integer i;
 
-reg signed [bit_a - 1 : 0] aa ;
-reg signed [bit_b - 1 : 0] bb ;
+reg signed [bit_a - 1 : 0] aa [0:48];
+reg signed [bit_b - 1 : 0] bb [0:48];
 reg signed [bit_a + bit_b - 1 : 0] mm [0:48];
 
 always@(*)begin
     for(i = 0 ; i < 49 ; i = i + 1)begin
-        aa = a[bit_a * i +: bit_a];
-        bb = b[bit_b * i +: bit_b];
-        mm[i] = aa * bb;
+        aa[i] = a[bit_a * i +: bit_a];
+        bb[i] = b[bit_b * i +: bit_b];
+        mm[i] = aa[i] * bb[i];
     end
 end
 
