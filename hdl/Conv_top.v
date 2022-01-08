@@ -110,11 +110,11 @@ reg [270-1:0] in;
 reg signed [20-1:0] mul_result_n[0:81-1];
 reg signed [20-1:0] mul_result[0:81-1];
 
-reg signed [25:0] sum_n [0:27-1];
-reg signed [25:0] sum [0:27-1];
+reg signed [25:0] sum_n [0:9-1];
+reg signed [25:0] sum [0:9-1];
 
-reg [25:0] unsigned_sum[0:27-1];
-reg [25:0] out [0:27];
+reg [25:0] unsigned_sum[0:9-1];
+reg [25:0] out [0:9-1];
 
 
 reg [4:0] in_x, in_y;
@@ -368,6 +368,14 @@ always@(posedge clk)begin
     b[0] <= {sram_rdata_bias,8'd0};
 end
 
+
+
+
+
+
+
+
+
 always@(*)begin
     if(state == CONV1)begin
         if (weight_cnt_delay[2] == 0)begin
@@ -445,6 +453,22 @@ always@(*)begin
     end
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 always@(posedge clk)begin
     for(o = 0; o < 81 ; o = o + 1)begin
         mul_result[o] <= mul_result_n[o];
@@ -463,15 +487,12 @@ always@(*)begin
                        mul_result[s*9 + 3] + mul_result[s*9 + 4] + mul_result[s*9 + 5] + 
                        mul_result[s*9 + 6] + mul_result[s*9 + 7] + mul_result[s*9 + 8];
         end
-        for(s = 9 ; s < 27 ; s = s + 1)begin
-            sum_n[s] = 0;
-        end
     end
 end
 
 always@(posedge clk)begin
     if(state == CONV1)begin
-        for(q = 0 ; q < 27 ; q = q + 1)begin
+        for(q = 0 ; q < 9 ; q = q + 1)begin
             sum[q] <= sum_n[q];
         end
     end
@@ -479,17 +500,15 @@ always@(posedge clk)begin
         for(q = 0 ; q < 9 ; q = q + 1)begin
             sum[q] <= (in_cnt == 2)? b[0] + sum_n[q] : sum[q] + sum_n[q];
         end
-        for(q = 9 ; q < 27 ; q = q + 1)begin
-            sum[q] <= 0;
-        end
     end
 end
 
 always@(*)begin
-    for(r = 0 ; r < 27 ; r = r + 1)begin
+    for(r = 0 ; r < 9 ; r = r + 1)begin
         unsigned_sum[r] = sum[r];
     end
-    for(r = 0 ; r < 27 ; r = r + 1)begin
+    
+    for(r = 0 ; r < 9 ; r = r + 1)begin
         out[r] = unsigned_sum[r] + 8'b1000_0000;
     end
 
