@@ -23,7 +23,7 @@ localparam WEIGHT_PER_ADDR = 9;
 localparam BIAS_PER_ADDR = 1;
 
 localparam END_CYCLES = 38000;
-//localparam END_CYCLES = 10000;
+//localparam END_CYCLES = 15000;
 
 real CYCLE = 10;
 
